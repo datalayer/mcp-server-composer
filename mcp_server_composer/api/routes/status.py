@@ -8,7 +8,7 @@ and aggregated metrics.
 from datetime import datetime
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 
 from ..dependencies import get_composer, require_auth
 from ..models import (
@@ -20,6 +20,7 @@ from ..models import (
 )
 from ...auth import AuthContext
 from ...composer import MCPServerComposer
+from ...metrics import metrics_collector
 
 router = APIRouter(tags=["status"])
 
@@ -270,7 +271,48 @@ async def get_metrics(
     # TODO: Add per-server metrics
     aggregated_metrics["per_server"] = {}
     
+    # Update Prometheus metrics
+    metrics_collector.update_uptime()
+    metrics_collector.update_server_counts(total_servers, running_servers, total_servers - running_servers)
+    metrics_collector.update_capability_counts(total_tools, total_prompts, total_resources)
+    
     return aggregated_metrics
+
+
+@router.get("/metrics/prometheus")
+async def get_prometheus_metrics(
+    composer: MCPServerComposer = Depends(get_composer),
+    auth: AuthContext = Depends(require_auth),
+) -> Response:
+    """
+    Get Prometheus metrics.
+    
+    Returns metrics in Prometheus text format for scraping by
+    Prometheus server.
+    
+    Args:
+        composer: MCPServerComposer instance.
+        auth: Authentication context.
+    
+    Returns:
+        Response with Prometheus metrics in text format.
+    """
+    # Update metrics before returning
+    total_servers = len(composer.config.servers)
+    running_servers = len(composer.discovered_servers)
+    total_tools = len(composer.list_tools())
+    total_prompts = len(composer.list_prompts())
+    total_resources = len(composer.list_resources())
+    
+    metrics_collector.update_uptime()
+    metrics_collector.update_server_counts(total_servers, running_servers, total_servers - running_servers)
+    metrics_collector.update_capability_counts(total_tools, total_prompts, total_resources)
+    
+    # Return metrics in Prometheus format
+    return Response(
+        content=metrics_collector.get_metrics(),
+        media_type=metrics_collector.get_content_type(),
+    )
 
 
 __all__ = ["router"]

@@ -82,6 +82,15 @@ def create_app(
         allow_headers=cors_headers or ["*"],
     )
     
+    # Add metrics middleware
+    from .middleware import MetricsMiddleware
+    app.add_middleware(MetricsMiddleware)
+    
+    # Initialize metrics
+    from ..metrics import metrics_collector
+    import platform
+    metrics_collector.initialize(version=version, platform=platform.system())
+    
     # Register exception handlers
     register_exception_handlers(app)
     
