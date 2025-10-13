@@ -24,23 +24,21 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "mcp[cli]>=1.2.1",
-    "toml>=0.10.2",
-    "importlib-metadata>=4.8.0",
-    "typing-extensions>=4.0.0",
-    # Phase 1 dependencies
-    "tomli>=2.0.0; python_version < '3.11'",
-    "pydantic>=2.0.0",
-    "python-dotenv>=1.0.0",
-    "psutil>=5.9.0",
-    # Phase 1 Week 4 - Transport Layer
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
-    "sse-starlette>=1.8.0",
-    "httpx>=0.25.0",
-    # Phase 2 - Authentication
     "PyJWT>=2.8.0",
     "cryptography>=41.0.0",
+    "fastapi>=0.104.0",
+    "httpx>=0.25.0",
+    "importlib-metadata>=4.8.0",
+    "mcp[cli]>=1.2.1",
+    "psutil>=5.9.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "sse-starlette>=1.8.0",
+    "sse_starlette",
+    "toml>=0.10.2",
+    "tomli>=2.0.0; python_version < '3.11'",
+    "typing-extensions>=4.0.0",
+    "uvicorn[standard]>=0.24.0",
 ]
 
 [project.optional-dependencies]
