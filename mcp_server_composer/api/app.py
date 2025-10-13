@@ -208,10 +208,11 @@ def register_routes(app: FastAPI) -> None:
     Args:
         app: FastAPI application.
     """
-    from .routes import health, version
+    from .routes import health, servers, version
     
     # Register route modules
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
+    app.include_router(servers.router, prefix="/api/v1", tags=["servers"])
     app.include_router(version.router, prefix="/api/v1", tags=["version"])
     
     # Root endpoint
