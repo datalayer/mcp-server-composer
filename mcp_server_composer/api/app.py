@@ -15,10 +15,10 @@ from fastapi.responses import JSONResponse
 
 from ..auth import AuthenticationError, InsufficientScopesError
 from ..exceptions import (
+    MCPComposerError,
     MCPConfigurationError,
     MCPDiscoveryError,
     MCPToolConflictError,
-    MCPError,
 )
 from ..__version__ import __version__
 
@@ -171,10 +171,10 @@ def register_exception_handlers(app: FastAPI) -> None:
             }
         )
     
-    @app.exception_handler(MCPError)
+    @app.exception_handler(MCPComposerError)
     async def mcp_error_handler(
         request: Request,
-        exc: MCPError
+        exc: MCPComposerError
     ):
         """Handle general MCP errors."""
         return JSONResponse(
