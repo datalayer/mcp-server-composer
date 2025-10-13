@@ -19,6 +19,7 @@ except ImportError:
         "Install it with: pip install toml"
     )
 
+from .config import EmbeddedServerConfig, MCPComposerConfig
 from .exceptions import MCPDiscoveryError, MCPImportError
 
 logger = logging.getLogger(__name__)
@@ -122,6 +123,56 @@ class MCPServerDiscovery:
                     logger.info(f"Successfully discovered MCP server: {dep_name}")
             except Exception as e:
                 logger.warning(f"Failed to analyze potential MCP server '{dep_name}': {e}")
+
+        return self.discovered_servers
+
+    def discover_from_config(
+        self,
+        config: Union[MCPComposerConfig, List[EmbeddedServerConfig]]
+    ) -> Dict[str, MCPServerInfo]:
+        """
+        Discover MCP servers from configuration.
+
+        Args:
+            config: Either a full MCPComposerConfig or a list of EmbeddedServerConfig.
+
+        Returns:
+            Dictionary mapping server names to MCPServerInfo objects.
+
+        Raises:
+            MCPDiscoveryError: If server discovery or import fails.
+        """
+        # Extract server configs
+        if isinstance(config, MCPComposerConfig):
+            server_configs = config.servers.embedded.servers
+        else:
+            server_configs = config
+
+        logger.info(f"Discovering {len(server_configs)} MCP servers from configuration")
+
+        # Analyze each configured server
+        for server_config in server_configs:
+            if not server_config.enabled:
+                logger.info(f"Skipping disabled server: {server_config.name}")
+                continue
+
+            try:
+                server_info = self._analyze_mcp_server(
+                    server_config.package,
+                    version=server_config.version or "latest"
+                )
+                if server_info:
+                    # Use the configured name instead of package name
+                    self.discovered_servers[server_config.name] = server_info
+                    logger.info(f"Successfully discovered MCP server: {server_config.name}")
+                else:
+                    logger.warning(f"Failed to discover server: {server_config.name}")
+            except Exception as e:
+                logger.error(f"Failed to analyze MCP server '{server_config.name}': {e}")
+                raise MCPDiscoveryError(
+                    f"Failed to discover server '{server_config.name}': {e}",
+                    package_name=server_config.package
+                ) from e
 
         return self.discovered_servers
 
