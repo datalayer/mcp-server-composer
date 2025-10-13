@@ -38,6 +38,9 @@ dependencies = [
     "uvicorn[standard]>=0.24.0",
     "sse-starlette>=1.8.0",
     "httpx>=0.25.0",
+    # Phase 2 - Authentication
+    "PyJWT>=2.8.0",
+    "cryptography>=41.0.0",
 ]
 
 [project.optional-dependencies]
