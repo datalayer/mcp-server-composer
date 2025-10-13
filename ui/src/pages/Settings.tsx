@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useThemeStore } from '../store/theme'
-import { Moon, Sun, Monitor, Bell, Save, CheckCircle } from 'lucide-react'
+import { Moon, Sun, Bell, Save, CheckCircle } from 'lucide-react'
 
 export default function Settings() {
   const { theme, setTheme } = useThemeStore()

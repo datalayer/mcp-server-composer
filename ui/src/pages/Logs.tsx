@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
-import { Search, Download, Trash2, Filter, Loader2, Terminal, AlertCircle } from 'lucide-react'
+import { Search, Download, Trash2, Filter, Terminal, AlertCircle } from 'lucide-react'
 
 interface LogEntry {
   timestamp: string
@@ -46,7 +46,7 @@ export default function Logs() {
         'Cache cleared',
         'Request completed in 45ms',
       ]
-      const serverList = servers?.servers?.map(s => s.name) || ['filesystem', 'calculator']
+      const serverList = servers?.servers?.map((s: any) => s.name) || ['filesystem', 'calculator']
       
       const newLog: LogEntry = {
         timestamp: new Date().toISOString(),
@@ -193,7 +193,7 @@ export default function Logs() {
               className="px-3 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="ALL">All Servers</option>
-              {servers?.servers?.map(server => (
+              {servers?.servers?.map((server: any) => (
                 <option key={server.id} value={server.name}>{server.name}</option>
               ))}
             </select>
