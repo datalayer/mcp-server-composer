@@ -5,6 +5,7 @@ This module provides the main functionality for composing multiple MCP servers
 into a single unified server instance.
 """
 
+import asyncio
 import logging
 from enum import Enum
 from pathlib import Path
@@ -18,6 +19,9 @@ from .exceptions import (
     MCPPromptConflictError,
     MCPToolConflictError,
 )
+from .process_manager import ProcessManager
+from .tool_manager import ToolManager
+from .config import MCPComposerConfig, ToolManagerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +44,9 @@ class MCPServerComposer:
         composed_server_name: str = "composed-mcp-server",
         conflict_resolution: ConflictResolution = ConflictResolution.PREFIX,
         discovery: Optional[MCPServerDiscovery] = None,
+        config: Optional[MCPComposerConfig] = None,
+        use_tool_manager: bool = False,
+        use_process_manager: bool = False,
     ) -> None:
         """
         Initialize MCP server composer.
@@ -48,10 +55,14 @@ class MCPServerComposer:
             composed_server_name: Name for the composed server.
             conflict_resolution: Strategy for resolving naming conflicts.
             discovery: MCP server discovery instance. If None, creates a new one.
+            config: Full composer configuration. If provided, overrides other parameters.
+            use_tool_manager: Whether to use the enhanced ToolManager for conflict resolution.
+            use_process_manager: Whether to use ProcessManager for proxied servers.
         """
         self.composed_server_name = composed_server_name
         self.conflict_resolution = conflict_resolution
         self.discovery = discovery or MCPServerDiscovery()
+        self.config = config
         
         # Create the composed server instance
         self.composed_server = FastMCP(composed_server_name)
@@ -62,6 +73,26 @@ class MCPServerComposer:
         self.composed_resources: Dict[str, Any] = {}
         self.source_mapping: Dict[str, str] = {}  # Maps component name to source server
         self.conflicts_resolved: List[Dict[str, Any]] = []
+        
+        # Optional enhanced managers
+        self.tool_manager: Optional[ToolManager] = None
+        self.process_manager: Optional[ProcessManager] = None
+        
+        if use_tool_manager:
+            # Initialize ToolManager from config or defaults
+            tool_config = config.tool_manager if config else ToolManagerConfig()
+            self.tool_manager = ToolManager(tool_config)
+        
+        if use_process_manager:
+            # Initialize ProcessManager
+            auto_restart = False
+            if config and config.servers and config.servers.proxied:
+                # Check if any proxied server has auto-restart enabled
+                for server_config in config.servers.proxied.stdio:
+                    if hasattr(server_config, 'restart_policy') and server_config.restart_policy.value != 'never':
+                        auto_restart = True
+                        break
+            self.process_manager = ProcessManager(auto_restart=auto_restart)
 
     def compose_from_pyproject(
         self,
@@ -136,6 +167,180 @@ class MCPServerComposer:
             )
 
         return self.composed_server
+
+    async def compose_from_config(
+        self,
+        config: Optional[MCPComposerConfig] = None,
+    ) -> FastMCP:
+        """
+        Compose MCP servers from configuration.
+        
+        This method supports both embedded and proxied servers:
+        - Embedded servers are discovered and imported directly
+        - Proxied servers are started as subprocesses via ProcessManager
+        
+        Args:
+            config: Composer configuration. Uses self.config if not provided.
+        
+        Returns:
+            Composed FastMCP server instance.
+        
+        Raises:
+            MCPCompositionError: If composition fails.
+        """
+        config = config or self.config
+        if not config:
+            raise MCPCompositionError(
+                "No configuration provided",
+                server_name=self.composed_server_name
+            )
+        
+        logger.info(f"Starting composition from configuration")
+        
+        # Start process manager if needed
+        if self.process_manager:
+            await self.process_manager.start()
+        
+        composition_errors = []
+        
+        # Compose embedded servers
+        if config.servers and config.servers.embedded and config.servers.embedded.servers:
+            logger.info(f"Composing {len(config.servers.embedded.servers)} embedded servers")
+            for server_config in config.servers.embedded.servers:
+                if not server_config.enabled:
+                    logger.info(f"Skipping disabled embedded server: {server_config.name}")
+                    continue
+                
+                try:
+                    # Discover embedded server
+                    discovered = self.discovery.discover_from_config([server_config])
+                    if discovered:
+                        server_info = next(iter(discovered.values()))
+                        await self._compose_server_async(server_config.name, server_info)
+                        logger.info(f"Successfully composed embedded server: {server_config.name}")
+                except Exception as e:
+                    error_msg = f"Failed to compose embedded server '{server_config.name}': {e}"
+                    logger.error(error_msg)
+                    composition_errors.append(error_msg)
+        
+        # Compose proxied STDIO servers
+        if config.servers and config.servers.proxied and config.servers.proxied.stdio:
+            logger.info(f"Composing {len(config.servers.proxied.stdio)} proxied STDIO servers")
+            for server_config in config.servers.proxied.stdio:
+                try:
+                    await self._compose_proxied_server(server_config)
+                    logger.info(f"Successfully composed proxied server: {server_config.name}")
+                except Exception as e:
+                    error_msg = f"Failed to compose proxied server '{server_config.name}': {e}"
+                    logger.error(error_msg)
+                    composition_errors.append(error_msg)
+        
+        # Report composition results
+        self._log_composition_summary()
+        
+        if composition_errors:
+            error_summary = "; ".join(composition_errors)
+            raise MCPCompositionError(
+                f"Composition completed with errors: {error_summary}",
+                server_name=self.composed_server_name,
+                failed_components=composition_errors,
+            )
+        
+        return self.composed_server
+    
+    async def _compose_proxied_server(self, server_config) -> None:
+        """
+        Compose a proxied STDIO server.
+        
+        Args:
+            server_config: StdioProxiedServerConfig instance.
+        
+        Raises:
+            MCPCompositionError: If process manager is not initialized.
+        """
+        if not self.process_manager:
+            raise MCPCompositionError(
+                "ProcessManager not initialized. Set use_process_manager=True",
+                server_name=server_config.name
+            )
+        
+        logger.info(f"Starting proxied server: {server_config.name}")
+        
+        # Start the process
+        process = await self.process_manager.add_from_config(server_config, auto_start=True)
+        
+        # TODO: Implement MCP protocol communication over STDIO
+        # For now, we'll just register placeholder tools
+        # In a real implementation, we would:
+        # 1. Send MCP initialization request to the process
+        # 2. Receive available tools/prompts/resources
+        # 3. Register them with the composed server
+        
+        placeholder_tools = {
+            f"{server_config.name}_tool": {
+                "description": f"Placeholder tool from proxied server {server_config.name}",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        }
+        
+        await self._compose_tools_async(server_config.name, placeholder_tools)
+        
+        logger.info(f"Proxied server {server_config.name} started with PID {process.pid}")
+    
+    async def _compose_server_async(self, server_name: str, server_info: MCPServerInfo) -> None:
+        """Async version of _compose_server for embedded servers."""
+        logger.debug(f"Composing embedded server: {server_name}")
+
+        # Compose tools
+        await self._compose_tools_async(server_name, server_info.tools)
+        
+        # Compose prompts
+        self._compose_prompts(server_name, server_info.prompts)
+        
+        # Compose resources
+        self._compose_resources(server_name, server_info.resources)
+    
+    async def _compose_tools_async(self, server_name: str, tools: Dict[str, Any]) -> None:
+        """Async version of _compose_tools."""
+        if self.tool_manager:
+            # Use enhanced ToolManager
+            name_mapping = self.tool_manager.register_tools(server_name, tools)
+            
+            # Add to composed server
+            for original_name, resolved_name in name_mapping.items():
+                tool_def = tools[original_name]
+                self.composed_server._tool_manager._tools[resolved_name] = tool_def
+                self.composed_tools[resolved_name] = tool_def
+                self.source_mapping[resolved_name] = server_name
+                logger.debug(f"Added tool: {resolved_name} from {server_name}")
+            
+            # Record conflicts from tool manager
+            for conflict in self.tool_manager.conflicts_resolved:
+                self.conflicts_resolved.append(conflict)
+        else:
+            # Use legacy conflict resolution
+            self._compose_tools(server_name, tools)
+    
+    def _log_composition_summary(self) -> None:
+        """Log composition summary."""
+        total_tools = len(self.composed_tools)
+        total_prompts = len(self.composed_prompts)
+        total_resources = len(self.composed_resources)
+        
+        logger.info(
+            f"Composition complete: {total_tools} tools, {total_prompts} prompts, "
+            f"{total_resources} resources"
+        )
+
+        if self.conflicts_resolved:
+            logger.info(f"Resolved {len(self.conflicts_resolved)} naming conflicts")
+        
+        if self.process_manager:
+            processes = self.process_manager.list_processes()
+            logger.info(f"Managing {len(processes)} proxied server processes")
 
     def compose_servers(self, servers: Dict[str, MCPServerInfo]) -> FastMCP:
         """
@@ -381,3 +586,53 @@ class MCPServerComposer:
     def get_resource_source(self, resource_name: str) -> Optional[str]:
         """Get the source server name for a specific resource."""
         return self.source_mapping.get(resource_name)
+    
+    async def start(self) -> None:
+        """Start the composer and all managed processes."""
+        if self.process_manager:
+            await self.process_manager.start()
+        logger.info(f"Composer {self.composed_server_name} started")
+    
+    async def stop(self) -> None:
+        """Stop the composer and all managed processes."""
+        if self.process_manager:
+            await self.process_manager.stop()
+        logger.info(f"Composer {self.composed_server_name} stopped")
+    
+    async def restart_proxied_server(self, server_name: str) -> None:
+        """
+        Restart a specific proxied server.
+        
+        Args:
+            server_name: Name of the proxied server to restart.
+        
+        Raises:
+            ValueError: If process manager is not initialized or server not found.
+        """
+        if not self.process_manager:
+            raise ValueError("ProcessManager not initialized")
+        
+        await self.process_manager.restart_process(server_name)
+        logger.info(f"Restarted proxied server: {server_name}")
+    
+    def get_proxied_servers_info(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get information about all proxied servers.
+        
+        Returns:
+            Dictionary mapping server names to their process info.
+        """
+        if not self.process_manager:
+            return {}
+        
+        return self.process_manager.get_all_process_info()
+    
+    async def __aenter__(self):
+        """Context manager entry."""
+        await self.start()
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        await self.stop()
+
