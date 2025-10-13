@@ -130,10 +130,11 @@ class ToolParameter(BaseModel):
 
 class ToolInfo(BaseModel):
     """Tool information."""
+    id: str
     name: str
     description: Optional[str] = None
     parameters: List[ToolParameter] = []
-    server: str
+    server_id: str
     version: Optional[str] = None
 
 
@@ -141,11 +142,13 @@ class ToolListResponse(BaseModel):
     """Tool list response."""
     tools: List[ToolInfo]
     total: int
+    offset: int = 0
+    limit: int = 100
 
 
 class ToolInvokeRequest(BaseModel):
     """Tool invocation request."""
-    parameters: Dict[str, Any] = Field(default_factory=dict)
+    arguments: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolInvokeResponse(BaseModel):
@@ -153,6 +156,7 @@ class ToolInvokeResponse(BaseModel):
     success: bool
     result: Optional[Any] = None
     error: Optional[str] = None
+    tool_id: str
     execution_time_ms: Optional[float] = None
 
 
@@ -160,16 +164,19 @@ class ToolInvokeResponse(BaseModel):
 
 class PromptInfo(BaseModel):
     """Prompt information."""
+    id: str
     name: str
     description: Optional[str] = None
-    arguments: List[Dict[str, Any]] = []
-    server: str
+    arguments: List[str] = []
+    server_id: str
 
 
 class PromptListResponse(BaseModel):
     """Prompt list response."""
     prompts: List[PromptInfo]
     total: int
+    offset: int = 0
+    limit: int = 100
 
 
 # Resource Models
@@ -180,13 +187,15 @@ class ResourceInfo(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     mime_type: Optional[str] = None
-    server: str
+    server_id: str
 
 
 class ResourceListResponse(BaseModel):
     """Resource list response."""
     resources: List[ResourceInfo]
     total: int
+    offset: int = 0
+    limit: int = 100
 
 
 # Configuration Models
