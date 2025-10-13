@@ -37,6 +37,10 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     logger.info("Shutting down MCP Server Composer API")
+    
+    # Stop all translators
+    from .routes.translators import shutdown_translators
+    await shutdown_translators()
 
 
 def create_app(
@@ -217,7 +221,7 @@ def register_routes(app: FastAPI) -> None:
     Args:
         app: FastAPI application.
     """
-    from .routes import config, health, servers, status, tools, version
+    from .routes import config, health, servers, status, tools, translators, version
     
     # Register route modules
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
@@ -225,6 +229,7 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(tools.router, prefix="/api/v1", tags=["tools", "prompts", "resources"])
     app.include_router(config.router, prefix="/api/v1", tags=["config"])
     app.include_router(status.router, prefix="/api/v1", tags=["status", "composition", "metrics"])
+    app.include_router(translators.router, prefix="/api/v1", tags=["translators"])
     app.include_router(version.router, prefix="/api/v1", tags=["version"])
     
     # Root endpoint
