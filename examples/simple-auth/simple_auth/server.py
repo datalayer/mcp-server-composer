@@ -433,34 +433,61 @@ async def health_check(request: Request):
 # AUTHENTICATION MIDDLEWARE FOR MCP SSE ENDPOINT
 # ============================================================================
 
-from starlette.middleware.base import BaseHTTPMiddleware
-
-class AuthMiddleware(BaseHTTPMiddleware):
+class AuthMiddleware:
     """
-    Middleware that validates OAuth2 token for all MCP requests
+    Pure ASGI middleware that validates OAuth2 token for MCP requests
     
-    This intercepts requests to /sse and /messages endpoints
+    This works properly with streaming responses (SSE)
     """
-    async def dispatch(self, request: Request, call_next):
+    def __init__(self, app):
+        self.app = app
+    
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        
+        # Get the path
+        path = scope["path"]
+        
         # Skip auth for public endpoints
-        if request.url.path in ["/", "/health", "/callback", "/.well-known/oauth-protected-resource", "/.well-known/oauth-authorization-server"]:
-            return await call_next(request)
+        public_paths = ["/", "/health", "/callback", 
+                       "/.well-known/oauth-protected-resource", 
+                       "/.well-known/oauth-authorization-server"]
+        
+        if path in public_paths:
+            await self.app(scope, receive, send)
+            return
         
         # Require auth for MCP endpoints (/sse, /messages)
-        if request.url.path in ["/sse", "/messages"] or request.url.path.startswith("/mcp/"):
+        if path in ["/sse", "/messages"] or path.startswith("/mcp/"):
+            # Extract Authorization header
+            headers = dict(scope.get("headers", []))
+            auth_header = headers.get(b"authorization", b"").decode("utf-8")
+            
             try:
-                authorization = request.headers.get("authorization")
-                user_info = await verify_token(authorization)
-                # Store user info in request state for potential use in tools
-                request.state.user = user_info
+                # Validate token
+                user_info = await verify_token(auth_header)
+                
+                # Store user info in scope state for potential use in tools
+                if "state" not in scope:
+                    scope["state"] = {}
+                scope["state"]["user"] = user_info
+                
+                # Continue to the app
+                await self.app(scope, receive, send)
+            
             except HTTPException as e:
-                return JSONResponse(
+                # Send error response
+                response = JSONResponse(
                     status_code=e.status_code,
                     content={"error": e.detail},
-                    headers=e.headers
+                    headers=e.headers or {}
                 )
-        
-        return await call_next(request)
+                await response(scope, receive, send)
+        else:
+            # For all other paths, pass through
+            await self.app(scope, receive, send)
 
 
 # ============================================================================
@@ -484,8 +511,8 @@ def main():
     # FastMCP creates an app with /sse endpoint and custom routes
     app = mcp.sse_app()
     
-    # Add authentication middleware
-    app.add_middleware(AuthMiddleware)
+    # Wrap with authentication middleware (pure ASGI, supports streaming)
+    app = AuthMiddleware(app)
     
     # Run with uvicorn
     uvicorn.run(
@@ -494,6 +521,10 @@ def main():
         port=config.server_port,
         log_level="info"
     )
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
