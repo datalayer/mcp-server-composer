@@ -370,7 +370,7 @@ Content-Type: application/json
 
   ┌─────────────────────────────────────────────────────────────────┐
   │                         MCP Client                              │
-  │                       (auth_client.py)                          │
+  │                   (simple_auth/client.py)                       │
   │  ┌──────────────────────────────────────────────────────────┐  │
   │  │  OAuth2 Flow Manager                                      │  │
   │  │  • Metadata discovery                                     │  │
@@ -390,7 +390,7 @@ Content-Type: application/json
                            │
   ┌────────────────────────┴───────────────────────────────────────┐
   │                        MCP Server                              │
-  │                      (auth_server.py)                          │
+  │                   (simple_auth/server.py)                      │
   │  ┌──────────────────────────────────────────────────────────┐  │
   │  │  HTTP Request Handler                                     │  │
   │  │  • Route management                                       │  │

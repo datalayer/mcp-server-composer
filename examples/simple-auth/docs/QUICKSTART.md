@@ -10,15 +10,12 @@ Get up and running in 5 minutes!
 
 ## Step 1: Create GitHub OAuth App (2 minutes)
 
-1. Visit https://github.com/settings/developers
-2. Click **"New OAuth App"**
-3. Fill in:
-   - **Application name**: `MCP Auth Demo`
-   - **Homepage URL**: `http://localhost:8080`
-   - **Authorization callback URL**: `http://localhost:8080/callback`
-4. Click **"Register application"**
-5. Copy your **Client ID**
-6. Click **"Generate a new client secret"** and copy the **Client Secret**
+📖 **Full instructions**: [GITHUB.md](GITHUB.md)
+
+**Quick steps**:
+1. Go to https://github.com/settings/developers → **"New OAuth App"**
+2. Set callback URL to: `http://localhost:8080/callback`
+3. Copy your **Client ID** and **Client Secret**
 
 ⚠️ **Security Note**: Never commit your client secret to version control!
 
@@ -127,7 +124,9 @@ Server → Client: 200 OK + list of tools
 Run the test script to verify everything works:
 
 ```bash
-python test_auth.py
+python -m pytest tests/test_auth.py
+# Or run directly:
+python tests/test_auth.py
 ```
 
 ## Troubleshooting

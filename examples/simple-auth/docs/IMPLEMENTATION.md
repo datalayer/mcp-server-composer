@@ -9,7 +9,7 @@ The server has been updated to use the **official MCP Python SDK** (FastMCP) ins
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Client Application                       │
-│                          (client.py)                             │
+│                      (simple_auth/client.py)                     │
 │                                                                  │
 │  1. OAuth2 Flow (GitHub authentication)                         │
 │  2. MCP SDK Client (mcp.client.sse)                            │
@@ -20,7 +20,7 @@ The server has been updated to use the **official MCP Python SDK** (FastMCP) ins
                             │
 ┌───────────────────────────┴─────────────────────────────────────┐
 │                      FastAPI Application                         │
-│                         (server.py)                              │
+│                      (simple_auth/server.py)                     │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
 │  │         Authentication Middleware                          │ │
@@ -53,7 +53,7 @@ The server has been updated to use the **official MCP Python SDK** (FastMCP) ins
 
 ## Key Components
 
-### 1. Server (server.py)
+### 1. Server (simple_auth/server.py)
 
 **Built with:**
 - `FastMCP` from `mcp.server.fastmcp` - Official MCP SDK
@@ -77,7 +77,7 @@ The server has been updated to use the **official MCP Python SDK** (FastMCP) ins
 5. Request forwarded to FastMCP handler
 6. Tools executed with user context available
 
-### 2. Client (client.py)
+### 2. Client (simple_auth/client.py)
 
 **Built with:**
 - `mcp.ClientSession` - Official MCP client
@@ -251,7 +251,7 @@ Create `config.json` with GitHub OAuth credentials:
 ### 3. Run Server
 
 ```bash
-python server.py
+python -m simple_auth server
 ```
 
 Server starts on http://localhost:8080 with:
@@ -263,7 +263,7 @@ Server starts on http://localhost:8080 with:
 ### 4. Run Client
 
 ```bash
-python client.py
+python -m simple_auth client
 ```
 
 Client performs:
@@ -279,7 +279,9 @@ Client performs:
 ### Unit Tests
 
 ```bash
-python test_auth.py
+python -m pytest tests/test_auth.py
+# Or run directly:
+python tests/test_auth.py
 ```
 
 Tests:
@@ -314,8 +316,8 @@ curl http://localhost:8080/tools
 
 ## Comparison: Custom vs MCP SDK
 
-| Aspect | Custom (auth_server.py) | MCP SDK (server.py) |
-|--------|-------------------------|---------------------|
+| Aspect | Custom (_old/auth_server.py) | MCP SDK (simple_auth/server.py) |
+|--------|------------------------------|----------------------------------|
 | Protocol | Custom HTTP/JSON | Standard MCP |
 | Transport | HTTP POST | HTTP SSE |
 | Tool Definition | Manual classes | `@mcp.tool()` decorator |

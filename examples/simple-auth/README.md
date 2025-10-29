@@ -1,56 +1,44 @@
 # Simple MCP Server with GitHub OAuth Authentication
 
-This is a didactic example demonstrating how to implement OAuth2 authentication with GitHub for an MCP (Model Context Protocol) server. The server requires users to authenticate via GitHub before they can access any tools.
+A clear, educational example demonstrating OAuth2 authentication for MCP (Model Context Protocol) servers using GitHub as the identity provider.
 
 ## 📚 What You'll Learn
 
-1. How OAuth2 authentication works with MCP servers
-2. How to implement the MCP Authorization specification (2025-06-18)
-3. How to protect MCP tools with access token verification
-4. How to create a simple client that handles the OAuth flow
+- **OAuth2** - Authorization Code flow with PKCE
+- **MCP Authorization** - Official specification (2025-06-18)
+- **Security** - Token validation, CSRF protection, resource indicators
+- **MCP SDK** - Building servers with FastMCP and clients with MCP SDK
 
-## 🏗️ Architecture Overview
+## 📖 Documentation
+
+| File | Purpose | Start Here If... |
+|------|---------|------------------|
+| **[docs/QUICKSTART.md](docs/QUICKSTART.md)** | Get running in 5 minutes | You want to try it immediately |
+| **[docs/GITHUB.md](docs/GITHUB.md)** | GitHub OAuth app setup | Setting up for the first time |
+| **[docs/FLOW_EXPLAINED.md](docs/FLOW_EXPLAINED.md)** | Detailed OAuth flow | You want to understand how it works |
+| **[docs/DIAGRAMS.md](docs/DIAGRAMS.md)** | Visual explanations | You prefer diagrams |
+| **[docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)** | Technical details | You're implementing your own |
+
+## 📁 Project Structure
 
 ```
-┌─────────────┐         ┌──────────────────┐         ┌─────────────┐
-│   Client    │────────>│   MCP Server     │<────────│   GitHub    │
-│             │         │  (Protected)     │         │   OAuth     │
-└─────────────┘         └──────────────────┘         └─────────────┘
-      │                         │                           │
-      │ 1. Request without      │                           │
-      │    token                │                           │
-      │─────────────────────────>                           │
-      │                         │                           │
-      │ 2. 401 + WWW-Authenticate                           │
-      │    with metadata URL    │                           │
-      │<─────────────────────────                           │
-      │                         │                           │
-      │ 3. Fetch metadata       │                           │
-      │─────────────────────────>                           │
-      │                         │                           │
-      │ 4. OAuth metadata       │                           │
-      │<─────────────────────────                           │
-      │                         │                           │
-      │ 5. Start OAuth flow     │                           │
-      │─────────────────────────────────────────────────────>
-      │                         │                           │
-      │ 6. User authorizes in browser                       │
-      │<─────────────────────────────────────────────────────
-      │                         │                           │
-      │ 7. Exchange code for    │                           │
-      │    access token         │                           │
-      │─────────────────────────────────────────────────────>
-      │                         │                           │
-      │ 8. Access token         │                           │
-      │<─────────────────────────────────────────────────────
-      │                         │                           │
-      │ 9. Request with         │                           │
-      │    Bearer token         │                           │
-      │─────────────────────────>                           │
-      │                         │                           │
-      │ 10. Validate token &    │                           │
-      │     return response     │                           │
-      │<─────────────────────────                           │
+simple-auth/
+├── simple_auth/           # Python package
+│   ├── server.py         # MCP server with OAuth2 (FastMCP + FastAPI)
+│   ├── client.py         # MCP client with OAuth2 flow
+│   ├── __main__.py       # CLI entry point
+│   └── __init__.py
+├── docs/                  # Documentation
+│   ├── GITHUB.md         # GitHub OAuth app setup
+│   ├── QUICKSTART.md     # 5-minute getting started
+│   ├── FLOW_EXPLAINED.md # Detailed OAuth flow walkthrough
+│   ├── DIAGRAMS.md       # Visual diagrams
+│   └── IMPLEMENTATION.md # Technical implementation details
+├── README.md             # This file - complete reference
+├── config.json           # OAuth credentials (template)
+├── requirements.txt      # Dependencies
+└── tests/
+    └── test_auth.py     # Basic tests
 ```
 
 ## 🔧 Components
@@ -76,23 +64,39 @@ This is a didactic example demonstrating how to implement OAuth2 authentication 
    - GitHub OAuth app credentials
    - Server settings
 
-## 🚀 Setup Instructions
+## 🚀 Quick Start
 
-### Step 1: Create GitHub OAuth App
+1. **Create GitHub OAuth app** → [docs/GITHUB.md](docs/GITHUB.md)
+2. **Configure** → Edit `config.json` with your Client ID and Secret
+3. **Install** → `pip install -r requirements.txt`
+4. **Run server** → `python -m simple_auth server`
+5. **Run client** → `python -m simple_auth client`
 
-1. Go to https://github.com/settings/developers
-2. Click "New OAuth App"
-3. Fill in the details:
-   - **Application name**: `MCP Auth Example`
-   - **Homepage URL**: `http://localhost:8080`
-   - **Authorization callback URL**: `http://localhost:8080/callback`
-4. Click "Register application"
-5. Note your **Client ID**
-6. Generate a new **Client Secret**
+👉 **Detailed walkthrough**: [docs/QUICKSTART.md](docs/QUICKSTART.md)
 
-### Step 2: Configure the Application
+## 🎬 How It Works
 
-Create or update `config.json`:
+1. **Client connects** → Server responds with 401 and OAuth metadata
+2. **Discovery** → Client fetches authorization server configuration
+3. **Authentication** → Browser opens for GitHub authorization (with PKCE)
+4. **Token exchange** → Client receives access token
+5. **MCP access** → Client invokes tools via SSE with Bearer token
+6. **Validation** → Server validates every request with GitHub
+
+👉 **Detailed flow**: [docs/FLOW_EXPLAINED.md](docs/FLOW_EXPLAINED.md)
+
+## 🛠️ Available Tools
+
+The server exposes these example MCP tools:
+- `calculator_add(a, b)` - Add two numbers
+- `calculator_multiply(a, b)` - Multiply two numbers
+- `greeter_hello(name)` - Say hello
+- `greeter_goodbye(name)` - Say goodbye
+- `get_server_info()` - Get server information
+
+## 🔧 Configuration
+
+Create `config.json` in the example directory:
 
 ```json
 {
@@ -107,222 +111,83 @@ Create or update `config.json`:
 }
 ```
 
-### Step 3: Install Dependencies
+See [docs/GITHUB.md](docs/GITHUB.md) for how to get these credentials.
+
+## 💻 Running the Example
+
+### Start the Server
 
 ```bash
-# Create virtual environment (optional but recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install required packages
 pip install -r requirements.txt
-```
-
-### Step 4: Run the Server
-
-```bash
 python -m simple_auth server
-# or
-python -m simple_auth.server
 ```
 
-You should see:
-```
-🔐 MCP Server with GitHub OAuth2 Authentication
-======================================================================
+Server starts on `http://localhost:8080` with OAuth metadata and MCP endpoints.
 
-📋 Server Information:
-   Server URL: http://localhost:8080
-   MCP Transport: HTTP with SSE
-   Authentication: GitHub OAuth2
-
-🔗 OAuth Metadata Endpoints:
-   Protected Resource: http://localhost:8080/.well-known/oauth-protected-resource
-   Authorization Server: http://localhost:8080/.well-known/oauth-authorization-server
-
-🔗 MCP Endpoints:
-   SSE Endpoint: http://localhost:8080/sse
-   Messages Endpoint: http://localhost:8080/messages
-
-🛠️  Available Tools:
-   - calculator_add - Add two numbers
-   - calculator_multiply - Multiply two numbers
-   - greeter_hello - Greet someone
-   - greeter_goodbye - Say goodbye
-   - get_server_info - Get server information
-
-✅ Server is ready! All MCP tools require authentication.
-```
-
-### Step 5: Run the Client
+### Run the Client
 
 In a new terminal:
 
 ```bash
 python -m simple_auth client
-# or
-python -m simple_auth.client
 ```
 
 The client will:
-1. ✅ Attempt to connect to the MCP server
-2. ✅ Receive a 401 Unauthorized response
-3. ✅ Fetch OAuth metadata
-4. ✅ Open your browser for GitHub authentication
-5. ✅ Exchange authorization code for access token
-6. ✅ Connect to MCP server via SSE transport with authentication
-7. ✅ List available MCP tools
-8. ✅ Invoke MCP tools using the official MCP protocol
+1. Connect to MCP server (receives 401)
+2. Fetch OAuth metadata
+3. Open browser for GitHub authentication
+4. Exchange authorization code for access token
+5. Connect via SSE with Bearer token
+6. List and invoke MCP tools
 
-## 📖 Understanding the Flow
+## 📖 Understanding the Code
 
-### 1. Initial Request (No Token)
+For detailed code explanations and flow diagrams, see:
+- **[docs/FLOW_EXPLAINED.md](docs/FLOW_EXPLAINED.md)** - Step-by-step OAuth flow
+- **[docs/DIAGRAMS.md](docs/DIAGRAMS.md)** - Visual diagrams  
+- **[docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)** - Technical implementation details
 
-```python
-# Client makes request without token
-response = requests.get("http://localhost:8080/tools")
-# Status: 401 Unauthorized
-```
+### Key Components
 
-### 2. Server Returns WWW-Authenticate Header
+**Server** (`simple_auth/server.py`):
+- Uses FastMCP SDK with `@mcp.tool()` decorators
+- FastAPI for HTTP/SSE transport
+- JWT token validation middleware
+- OAuth metadata endpoints (RFC 9728, RFC 8414)
 
-```http
-HTTP/1.1 401 Unauthorized
-WWW-Authenticate: Bearer realm="http://localhost:8080/.well-known/oauth-protected-resource"
-```
-
-This tells the client where to find the protected resource metadata.
-
-### 3. Client Discovers Authorization Server
-
-```python
-# Fetch protected resource metadata
-metadata = requests.get("http://localhost:8080/.well-known/oauth-protected-resource").json()
-# Returns: {"authorization_servers": ["http://localhost:8080"]}
-
-# Fetch authorization server metadata
-auth_metadata = requests.get("http://localhost:8080/.well-known/oauth-authorization-server").json()
-# Returns OAuth endpoints and capabilities
-```
-
-### 4. OAuth Flow with GitHub
-
-```python
-# Generate PKCE parameters for security
-code_verifier = generate_code_verifier()
-code_challenge = generate_code_challenge(code_verifier)
-
-# Build authorization URL
-auth_url = f"{github_authorize_url}?client_id={client_id}&redirect_uri={redirect_uri}&scope=user&state={state}&code_challenge={code_challenge}&code_challenge_method=S256&resource={resource_uri}"
-
-# User authorizes in browser
-# GitHub redirects back with authorization code
-
-# Exchange code for token
-token_response = requests.post(github_token_url, data={
-    "client_id": client_id,
-    "client_secret": client_secret,
-    "code": authorization_code,
-    "redirect_uri": redirect_uri,
-    "code_verifier": code_verifier
-})
-
-access_token = token_response.json()["access_token"]
-```
-
-### 5. Authenticated Requests
-
-```python
-# Make request with Bearer token
-headers = {"Authorization": f"Bearer {access_token}"}
-response = requests.post("http://localhost:8080/tools/calculator:add", 
-                        json={"a": 5, "b": 3},
-                        headers=headers)
-# Status: 200 OK
-# Result: {"result": 8}
-```
-
-### 6. Token Validation on Server
-
-```python
-# Server validates token before processing
-def validate_token(token: str) -> bool:
-    # Verify token with GitHub
-    response = requests.get("https://api.github.com/user", 
-                           headers={"Authorization": f"Bearer {token}"})
-    return response.status_code == 200
-```
+**Client** (`simple_auth/client.py`):
+- OAuth2 flow with PKCE (RFC 7636)
+- Browser-based GitHub authentication
+- MCP SDK client with SSE transport
+- Proper MCP tool invocation
 
 ## 🔐 Security Features
 
-### 1. **PKCE (Proof Key for Code Exchange)**
-   - Protects against authorization code interception
-   - Required by MCP specification for public clients
-   - Uses SHA256 challenge/verifier pair
+✅ **PKCE** - Prevents authorization code interception (RFC 7636)  
+✅ **State Parameter** - CSRF protection  
+✅ **Resource Indicators** - Token audience binding (RFC 8707)  
+✅ **Token Validation** - Every request verified with GitHub  
+✅ **Bearer Token in Header** - Never in URL
 
-### 2. **Resource Parameter**
-   - Explicitly binds tokens to the MCP server
-   - Prevents token reuse across services
-   - Follows RFC 8707
+## 📝 Standards Compliance
 
-### 3. **Token Validation**
-   - Server verifies every token with GitHub
-   - Rejects invalid or expired tokens
-   - Returns 401 for authentication failures
+- ✅ MCP Authorization Specification (2025-06-18)
+- ✅ OAuth 2.1 with PKCE
+- ✅ RFC 9728 - Protected Resource Metadata
+- ✅ RFC 8414 - Authorization Server Metadata
+- ✅ RFC 8707 - Resource Indicators
+- ✅ RFC 7636 - PKCE
 
-### 4. **State Parameter**
-   - Prevents CSRF attacks
-   - Verifies OAuth callback authenticity
+## 🎓 Use Cases
 
-## 🧪 Testing the Tools
+This authentication pattern enables:
+- **Secure MCP servers** - Protect tools with user authentication
+- **Multi-tenant deployments** - Different users, different access
+- **Audit logging** - Track which user invoked which tool
+- **Rate limiting** - Limit requests per user, not just per IP
+- **Fine-grained authorization** - Control tool access by user identity
 
-Once authenticated, the client can use the available tools:
-
-### Calculator Tool
-```bash
-# The client will automatically call:
-POST /tools/calculator:add
-{
-  "a": 5,
-  "b": 3
-}
-
-# Response: {"result": 8}
-```
-
-### Greeter Tool
-```bash
-POST /tools/greeter:hello
-{
-  "name": "Alice"
-}
-
-# Response: {"message": "Hello, Alice!"}
-```
-
-## 📝 Key MCP Concepts Demonstrated
-
-1. **Protected Resource Metadata** (RFC 9728)
-   - `/.well-known/oauth-protected-resource` endpoint
-   - Advertises authorization servers
-
-2. **Authorization Server Metadata** (RFC 8414)
-   - `/.well-known/oauth-authorization-server` endpoint
-   - Provides OAuth configuration
-
-3. **Bearer Token Authentication**
-   - All requests include `Authorization: Bearer <token>` header
-   - Tokens validated on every request
-
-4. **Tool Protection**
-   - Tools only accessible with valid tokens
-   - User context available for authorization decisions
-
-5. **Resource Indicators** (RFC 8707)
-   - `resource` parameter in OAuth requests
-   - Binds tokens to specific MCP server
-
-## 🎓 Learning Exercises
+## 💡 Learning Exercises
 
 ### Exercise 1: Add Tool Authorization
 Modify the server to restrict certain tools to specific users:
@@ -360,43 +225,23 @@ def refresh_access_token(refresh_token: str) -> str:
 
 ## 🐛 Troubleshooting
 
-### Issue: "redirect_uri_mismatch" error
-**Solution**: Ensure the callback URL in your GitHub OAuth app settings exactly matches `http://localhost:8080/callback`
+| Issue | Solution |
+|-------|----------|
+| `redirect_uri_mismatch` | Verify callback URL in [GitHub OAuth app](docs/GITHUB.md) is exactly `http://localhost:8080/callback` |
+| Token validation fails | GitHub tokens expire - restart authentication flow |
+| Browser doesn't open | Copy URL from terminal and open manually |
+| Port already in use | Change port in `config.json` or use `lsof -i :8080` to find/kill process |
 
-### Issue: Token validation fails
-**Solution**: Check that the GitHub access token has not expired. GitHub tokens typically last 8 hours.
+More troubleshooting: [docs/GITHUB.md](docs/GITHUB.md)
 
-### Issue: Browser doesn't open
-**Solution**: Manually navigate to the URL printed in the console
-
-### Issue: Port already in use
-**Solution**: Change the port in `config.json` or kill the process using port 8080:
-```bash
-# Find process
-lsof -i :8080
-
-# Kill process
-kill -9 <PID>
-```
-
-## 📚 Additional Resources
+## 📚 Resources
 
 - [MCP Authorization Specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization)
 - [OAuth 2.1 Draft](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-13)
-- [RFC 8707 - Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html)
-- [RFC 9728 - Protected Resource Metadata](https://datatracker.ietf.org/doc/html/rfc9728)
-- [RFC 8414 - Authorization Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414)
 - [GitHub OAuth Documentation](https://docs.github.com/en/developers/apps/building-oauth-apps)
+- RFC 7636 (PKCE), RFC 8414 (Auth Server Metadata), RFC 8707 (Resource Indicators), RFC 9728 (Protected Resource Metadata)
 
-## 🎯 Summary
+---
 
-This example demonstrates:
-- ✅ Complete OAuth2 flow with GitHub
-- ✅ MCP Authorization specification compliance
-- ✅ Protected resource metadata
-- ✅ Token validation and verification
-- ✅ PKCE for security
-- ✅ Simple, clear code structure
-- ✅ Didactic explanations at every step
-
-You now have a foundation for building secure, authenticated MCP servers! 🚀
+**🎓 You now have a working example of OAuth2-protected MCP server!**  
+Start with [docs/QUICKSTART.md](docs/QUICKSTART.md) to get running in 5 minutes. 🚀
