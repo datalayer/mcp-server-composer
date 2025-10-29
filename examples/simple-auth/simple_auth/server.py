@@ -18,15 +18,12 @@ OAuth2 authentication for all tool invocations.
 """
 
 import json
-import asyncio
 from typing import Dict, Optional, Any
-from contextlib import asynccontextmanager
 import requests
 
-from fastapi import FastAPI, Request, Response, HTTPException, Header
+from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse
 from mcp.server.fastmcp import FastMCP
-from pydantic import BaseModel
 
 
 class Config:
