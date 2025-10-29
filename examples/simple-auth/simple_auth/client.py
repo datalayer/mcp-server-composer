@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 MCP Client with GitHub OAuth2 Authentication
 
@@ -62,7 +63,9 @@ class Config:
     
     @property
     def callback_url(self) -> str:
-        return f"{self.server_url}/callback"
+        """Callback URL for OAuth - uses port 8081 to avoid conflict with server on 8080"""
+        host = self.config["server"]["host"]
+        return f"http://{host}:8081/callback"
 
 
 class PKCEHelper:
@@ -294,9 +297,9 @@ class MCPClient:
         print(f"\n🌐 Opening browser for GitHub authentication...")
         print(f"   URL: {auth_url[:80]}... (truncated)")
         
-        # Start local callback server
+        # Start local callback server on port 8081 (server uses 8080)
         callback_server = HTTPServer(
-            (self.config.config["server"]["host"], self.config.config["server"]["port"]),
+            (self.config.config["server"]["host"], 8081),
             OAuthCallbackHandler
         )
         
@@ -314,6 +317,7 @@ class MCPClient:
         
         print("⏳ Waiting for user authorization...")
         print("   Please complete the authentication in your browser.")
+        print(f"   (Callback server listening on port 8081)", flush=True)
         
         # Wait for callback
         timeout = 300  # 5 minutes
@@ -321,19 +325,19 @@ class MCPClient:
         
         while OAuthCallbackHandler.authorization_code is None:
             if time.time() - start_time > timeout:
-                print("❌ Timeout waiting for authorization")
-                callback_server.shutdown()
+                print("❌ Timeout waiting for authorization", flush=True)
                 return False
             time.sleep(0.5)
         
-        callback_server.shutdown()
+        # Give the server thread a moment to finish sending the response
+        time.sleep(0.5)
+        
+        print("✅ Authorization code received", flush=True)
         
         # Verify state
         if OAuthCallbackHandler.state != state:
-            print("❌ Error: State mismatch (possible CSRF attack)")
+            print("❌ Error: State mismatch (possible CSRF attack)", flush=True)
             return False
-        
-        print("✅ Authorization code received")
         
         # Exchange authorization code for access token
         print("\n🔄 Exchanging authorization code for access token...")

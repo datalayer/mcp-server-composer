@@ -27,7 +27,7 @@ Click the **"New OAuth App"** button.
 |-------|-------|-------|
 | **Application name** | `MCP Auth Example` | Or any name you prefer |
 | **Homepage URL** | `http://localhost:8080` | Your server's base URL |
-| **Authorization callback URL** | `http://localhost:8080/callback` | Must match exactly |
+| **Authorization callback URL** | `http://localhost:8081/callback` | Client callback listener (port 8081) |
 | **Application description** | *(optional)* | Brief description of your app |
 
 ### 4. Register the Application
@@ -77,8 +77,9 @@ Replace `client_id` and `client_secret` with your actual values.
 
 **Solution**: 
 1. Go to your OAuth app settings on GitHub
-2. Verify the callback URL is exactly: `http://localhost:8080/callback`
-3. No trailing slashes, correct port, correct protocol (http vs https)
+2. Verify the callback URL is exactly: `http://localhost:8081/callback`
+3. Note: The client runs its own callback listener on port 8081 (server uses 8080)
+4. No trailing slashes, correct port, correct protocol (http vs https)
 
 ### "Bad verification code" Error
 

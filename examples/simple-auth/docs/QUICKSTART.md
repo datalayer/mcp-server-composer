@@ -13,8 +13,8 @@ Get up and running in 5 minutes!
 📖 **Full instructions**: [GITHUB.md](GITHUB.md)
 
 **Quick steps**:
-1. Go to https://github.com/settings/developers → **"New OAuth App"**
-2. Set callback URL to: `http://localhost:8080/callback`
+1. Visit https://github.com/settings/developers → **"New OAuth App"**
+2. Set callback URL to: `http://localhost:8081/callback`
 3. Copy your **Client ID** and **Client Secret**
 
 ⚠️ **Security Note**: Never commit your client secret to version control!

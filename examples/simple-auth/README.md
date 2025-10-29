@@ -113,6 +113,11 @@ Create `config.json` in the example directory:
 
 See [docs/GITHUB.md](docs/GITHUB.md) for how to get these credentials.
 
+**Note on ports**:
+- **Port 8080**: MCP server (configured in `config.json`)
+- **Port 8081**: OAuth callback listener (used by client during authentication)
+- The client runs a temporary HTTP server on port 8081 to receive the OAuth callback from GitHub
+
 ## 💻 Running the Example
 
 ### Start the Server
@@ -227,7 +232,7 @@ def refresh_access_token(refresh_token: str) -> str:
 
 | Issue | Solution |
 |-------|----------|
-| `redirect_uri_mismatch` | Verify callback URL in [GitHub OAuth app](docs/GITHUB.md) is exactly `http://localhost:8080/callback` |
+| `redirect_uri_mismatch` | Verify callback URL in [GitHub OAuth app](docs/GITHUB.md) is exactly `http://localhost:8081/callback` (client uses port 8081) |
 | Token validation fails | GitHub tokens expire - restart authentication flow |
 | Browser doesn't open | Copy URL from terminal and open manually |
 | Port already in use | Change port in `config.json` or use `lsof -i :8080` to find/kill process |

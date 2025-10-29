@@ -3,7 +3,6 @@ Test script to verify the authentication flow works correctly
 """
 
 import requests
-import json
 
 
 def test_unauthenticated_access():

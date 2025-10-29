@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 MCP Server with GitHub OAuth2 Authentication
 
@@ -434,24 +435,47 @@ async def list_tools(authorization: Optional[str] = Header(None)):
     """
     List available MCP tools (requires authentication)
     
-    This is a convenience endpoint for testing
+    This is a convenience endpoint for testing.
+    For proper MCP tool listing, use the SSE endpoint with MCP protocol.
     """
     # Verify authentication
     user_info = await verify_token(authorization)
     
-    # Get tools from MCP server
-    tools = []
-    for tool_name, tool_func in mcp._tools.items():
-        tools.append({
-            "name": tool_name,
-            "description": tool_func.__doc__.strip() if tool_func.__doc__ else "No description",
-            "parameters": str(tool_func.__annotations__) if hasattr(tool_func, "__annotations__") else {}
-        })
+    # Return list of available tools
+    # These match the @mcp.tool() decorated functions
+    tools = [
+        {
+            "name": "calculator_add",
+            "description": "Add two numbers",
+            "parameters": {"a": "int", "b": "int"}
+        },
+        {
+            "name": "calculator_multiply",
+            "description": "Multiply two numbers",
+            "parameters": {"a": "int", "b": "int"}
+        },
+        {
+            "name": "greeter_hello",
+            "description": "Greet someone",
+            "parameters": {"name": "str"}
+        },
+        {
+            "name": "greeter_goodbye",
+            "description": "Say goodbye to someone",
+            "parameters": {"name": "str"}
+        },
+        {
+            "name": "get_server_info",
+            "description": "Get information about the MCP server",
+            "parameters": {}
+        }
+    ]
     
     return {
         "tools": tools,
         "authenticated_user": user_info.get("login"),
-        "user_name": user_info.get("name")
+        "user_name": user_info.get("name"),
+        "note": "For full MCP protocol access, use the /sse endpoint"
     }
 
 
