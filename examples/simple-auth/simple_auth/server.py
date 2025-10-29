@@ -108,6 +108,44 @@ mcp = FastMCP("github-auth-mcp-server")
 
 
 # ============================================================================
+# AUTHENTICATION HELPERS
+# ============================================================================
+
+async def verify_token(authorization: Optional[str]) -> Dict[str, Any]:
+    """
+    Verify OAuth token from Authorization header
+    
+    Raises HTTPException if invalid
+    Returns user info if valid
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing Authorization header",
+            headers={"WWW-Authenticate": f'Bearer realm="{config.server_url}/.well-known/oauth-protected-resource"'}
+        )
+    
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Authorization header format",
+            headers={"WWW-Authenticate": f'Bearer realm="{config.server_url}/.well-known/oauth-protected-resource"'}
+        )
+    
+    token = authorization[7:]  # Remove "Bearer " prefix
+    user_info = token_validator.validate_token(token)
+    
+    if not user_info:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": f'Bearer realm="{config.server_url}/.well-known/oauth-protected-resource"'}
+        )
+    
+    return user_info
+
+
+# ============================================================================
 # MCP TOOLS - Protected by OAuth2
 # ============================================================================
 
@@ -235,12 +273,11 @@ async def verify_token(authorization: Optional[str]) -> Dict[str, Any]:
 
 
 # ============================================================================
-# FASTAPI APP WITH MCP + OAUTH2
+# STARTUP MESSAGE
 # ============================================================================
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Lifespan context manager for startup/shutdown"""
+def print_startup_message():
+    """Print startup information"""
     print("\n" + "=" * 70)
     print("🔐 MCP Server with GitHub OAuth2 Authentication")
     print("=" * 70)
@@ -256,7 +293,6 @@ async def lifespan(app: FastAPI):
     print()
     print("🔗 MCP Endpoints:")
     print(f"   SSE Endpoint: {config.server_url}/sse")
-    print(f"   Messages Endpoint: {config.server_url}/messages")
     print()
     print("🛠️  Available Tools:")
     print("   - calculator_add - Add two numbers")
@@ -268,47 +304,36 @@ async def lifespan(app: FastAPI):
     print("✅ Server is ready! All MCP tools require authentication.")
     print("=" * 70)
     print()
-    yield
-    print("\n🛑 Shutting down server...")
-
-
-# Create FastAPI app
-app = FastAPI(
-    title="MCP Server with GitHub OAuth2",
-    description="Model Context Protocol server with OAuth2 authentication",
-    version="1.0.0",
-    lifespan=lifespan
-)
 
 
 # ============================================================================
-# OAUTH2 METADATA ENDPOINTS (RFC 9728, RFC 8414)
+# OAUTH2 METADATA ENDPOINTS (RFC 9728, RFC 8414) - Using custom_route
 # ============================================================================
 
-@app.get("/.well-known/oauth-protected-resource")
-async def protected_resource_metadata():
+@mcp.custom_route("/.well-known/oauth-protected-resource", ["GET"])
+async def protected_resource_metadata(request: Request):
     """
     Protected Resource Metadata (RFC 9728)
     
     Indicates which authorization server(s) protect this resource
     """
-    return {
+    return JSONResponse({
         "resource": config.server_url,
         "authorization_servers": [config.server_url],
         "bearer_methods_supported": ["header"],
         "resource_documentation": "https://github.com/datalayer/mcp-server-composer/tree/main/examples/simple-auth"
-    }
+    })
 
 
-@app.get("/.well-known/oauth-authorization-server")
-async def authorization_server_metadata():
+@mcp.custom_route("/.well-known/oauth-authorization-server", ["GET"])
+async def authorization_server_metadata(request: Request):
     """
     Authorization Server Metadata (RFC 8414)
     
     Describes OAuth endpoints and capabilities
     This server proxies to GitHub OAuth
     """
-    return {
+    return JSONResponse({
         "issuer": config.server_url,
         "authorization_endpoint": "https://github.com/login/oauth/authorize",
         "token_endpoint": "https://github.com/login/oauth/access_token",
@@ -317,15 +342,15 @@ async def authorization_server_metadata():
         "code_challenge_methods_supported": ["S256"],
         "token_endpoint_auth_methods_supported": ["client_secret_post"],
         "service_documentation": "https://docs.github.com/en/developers/apps/building-oauth-apps"
-    }
+    })
 
 
 # ============================================================================
-# OAUTH2 CALLBACK ENDPOINT
+# OAUTH2 CALLBACK ENDPOINT - Using custom_route
 # ============================================================================
 
-@app.get("/callback")
-async def oauth_callback(code: Optional[str] = None, state: Optional[str] = None):
+@mcp.custom_route("/callback", ["GET"])
+async def oauth_callback(request: Request):
     """
     OAuth callback endpoint
     
@@ -375,138 +400,70 @@ async def oauth_callback(code: Optional[str] = None, state: Optional[str] = None
 
 
 # ============================================================================
-# HEALTH CHECK ENDPOINT
+# PUBLIC ENDPOINTS - Using custom_route
 # ============================================================================
 
-@app.get("/health")
-async def health_check():
+@mcp.custom_route("/", ["GET"])
+async def root(request: Request):
+    """Root endpoint with server information"""
+    return JSONResponse({
+        "name": "MCP Server with GitHub OAuth2",
+        "version": "1.0.0",
+        "authentication": "GitHub OAuth2",
+        "transport": "HTTP with SSE",
+        "mcp_endpoints": {
+            "sse": f"{config.server_url}/sse",
+        },
+        "oauth_metadata": {
+            "protected_resource": f"{config.server_url}/.well-known/oauth-protected-resource",
+            "authorization_server": f"{config.server_url}/.well-known/oauth-authorization-server"
+        },
+        "documentation": "https://github.com/datalayer/mcp-server-composer/tree/main/examples/simple-auth"
+    })
+
+
+@mcp.custom_route("/health", ["GET"])
+async def health_check(request: Request):
     """Health check endpoint"""
-    return {
+    return JSONResponse({
         "status": "healthy",
         "authentication": "required",
         "oauth_provider": "GitHub"
-    }
+    })
 
 
 # ============================================================================
-# MCP ENDPOINTS WITH AUTHENTICATION
+# AUTHENTICATION MIDDLEWARE FOR MCP SSE ENDPOINT
 # ============================================================================
 
-@app.get("/sse")
-async def handle_sse(request: Request, authorization: Optional[str] = Header(None)):
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class AuthMiddleware(BaseHTTPMiddleware):
     """
-    SSE endpoint for MCP protocol
+    Middleware that validates OAuth2 token for all MCP requests
     
-    Requires OAuth2 authentication via Bearer token
+    This intercepts requests to /sse and /messages endpoints
     """
-    # Verify authentication
-    user_info = await verify_token(authorization)
-    
-    # Add user context to request state
-    request.state.user = user_info
-    
-    # Forward to MCP SSE handler
-    return await mcp.sse_handler(request)
-
-
-@app.post("/messages")
-async def handle_messages(request: Request, authorization: Optional[str] = Header(None)):
-    """
-    Messages endpoint for MCP protocol
-    
-    Requires OAuth2 authentication via Bearer token
-    """
-    # Verify authentication
-    user_info = await verify_token(authorization)
-    
-    # Add user context to request state
-    request.state.user = user_info
-    
-    # Forward to MCP message handler
-    return await mcp.messages_handler(request)
-
-
-# ============================================================================
-# CONVENIENCE ENDPOINTS FOR TESTING
-# ============================================================================
-
-@app.get("/tools")
-async def list_tools(authorization: Optional[str] = Header(None)):
-    """
-    List available MCP tools (requires authentication)
-    
-    This is a convenience endpoint for testing.
-    For proper MCP tool listing, use the SSE endpoint with MCP protocol.
-    """
-    # Verify authentication
-    user_info = await verify_token(authorization)
-    
-    # Return list of available tools
-    # These match the @mcp.tool() decorated functions
-    tools = [
-        {
-            "name": "calculator_add",
-            "description": "Add two numbers",
-            "parameters": {"a": "int", "b": "int"}
-        },
-        {
-            "name": "calculator_multiply",
-            "description": "Multiply two numbers",
-            "parameters": {"a": "int", "b": "int"}
-        },
-        {
-            "name": "greeter_hello",
-            "description": "Greet someone",
-            "parameters": {"name": "str"}
-        },
-        {
-            "name": "greeter_goodbye",
-            "description": "Say goodbye to someone",
-            "parameters": {"name": "str"}
-        },
-        {
-            "name": "get_server_info",
-            "description": "Get information about the MCP server",
-            "parameters": {}
-        }
-    ]
-    
-    return {
-        "tools": tools,
-        "authenticated_user": user_info.get("login"),
-        "user_name": user_info.get("name"),
-        "note": "For full MCP protocol access, use the /sse endpoint"
-    }
-
-
-@app.get("/")
-async def root():
-    """Root endpoint with server information"""
-    return {
-        "name": "MCP Server with GitHub OAuth2",
-        "version": "1.0.0",
-        "mcp_version": "2024-11-05",
-        "authentication": "GitHub OAuth2 (RFC 6749)",
-        "authorization_spec": "MCP Authorization 2025-06-18",
-        "endpoints": {
-            "oauth_metadata": {
-                "protected_resource": f"{config.server_url}/.well-known/oauth-protected-resource",
-                "authorization_server": f"{config.server_url}/.well-known/oauth-authorization-server"
-            },
-            "mcp": {
-                "sse": f"{config.server_url}/sse",
-                "messages": f"{config.server_url}/messages"
-            },
-            "oauth": {
-                "callback": f"{config.server_url}/callback"
-            },
-            "utility": {
-                "health": f"{config.server_url}/health",
-                "tools": f"{config.server_url}/tools"
-            }
-        },
-        "documentation": "https://github.com/datalayer/mcp-server-composer/tree/main/examples/simple-auth"
-    }
+    async def dispatch(self, request: Request, call_next):
+        # Skip auth for public endpoints
+        if request.url.path in ["/", "/health", "/callback", "/.well-known/oauth-protected-resource", "/.well-known/oauth-authorization-server"]:
+            return await call_next(request)
+        
+        # Require auth for MCP endpoints (/sse, /messages)
+        if request.url.path in ["/sse", "/messages"] or request.url.path.startswith("/mcp/"):
+            try:
+                authorization = request.headers.get("authorization")
+                user_info = await verify_token(authorization)
+                # Store user info in request state for potential use in tools
+                request.state.user = user_info
+            except HTTPException as e:
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"error": e.detail},
+                    headers=e.headers
+                )
+        
+        return await call_next(request)
 
 
 # ============================================================================
@@ -515,8 +472,25 @@ async def root():
 
 def main():
     """Main entry point for running the server"""
+    import sys
+    import io
     import uvicorn
     
+    # Ensure stdout uses UTF-8 encoding for emoji support
+    if sys.stdout.encoding != 'utf-8':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    
+    # Print startup message
+    print_startup_message()
+    
+    # Get FastMCP's SSE ASGI app
+    # FastMCP creates an app with /sse endpoint and custom routes
+    app = mcp.sse_app()
+    
+    # Add authentication middleware
+    app.add_middleware(AuthMiddleware)
+    
+    # Run with uvicorn
     uvicorn.run(
         app,
         host=config.server_host,

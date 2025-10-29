@@ -34,11 +34,12 @@ simple-auth/
 │   ├── FLOW_EXPLAINED.md # Detailed OAuth flow walkthrough
 │   ├── DIAGRAMS.md       # Visual diagrams
 │   └── IMPLEMENTATION.md # Technical implementation details
+├── tests/                 # Tests
+│   └── test_auth.py      # Basic tests
 ├── README.md             # This file - complete reference
+├── Makefile              # Convenient make targets
 ├── config.json           # OAuth credentials (template)
-├── requirements.txt      # Dependencies
-└── tests/
-    └── test_auth.py     # Basic tests
+└── requirements.txt      # Dependencies
 ```
 
 ## 🔧 Components
@@ -68,9 +69,9 @@ simple-auth/
 
 1. **Create GitHub OAuth app** → [docs/GITHUB.md](docs/GITHUB.md)
 2. **Configure** → Edit `config.json` with your Client ID and Secret
-3. **Install** → `pip install -r requirements.txt`
-4. **Run server** → `python -m simple_auth server`
-5. **Run client** → `python -m simple_auth client`
+3. **Install** → `make install` (or `pip install -r requirements.txt`)
+4. **Run server** → `make server` (or `python -m simple_auth server`)
+5. **Run client** → `make client` (or `python -m simple_auth client`) in a new terminal
 
 👉 **Detailed walkthrough**: [docs/QUICKSTART.md](docs/QUICKSTART.md)
 
@@ -125,6 +126,8 @@ See [docs/GITHUB.md](docs/GITHUB.md) for how to get these credentials.
 ```bash
 pip install -r requirements.txt
 python -m simple_auth server
+# Or use make:
+make server
 ```
 
 Server starts on `http://localhost:8080` with OAuth metadata and MCP endpoints.
@@ -135,6 +138,8 @@ In a new terminal:
 
 ```bash
 python -m simple_auth client
+# Or use make:
+make client
 ```
 
 The client will:

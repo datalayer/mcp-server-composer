@@ -40,6 +40,8 @@ Edit `config.json` and replace the placeholders:
 
 ```bash
 pip install -r requirements.txt
+# Or using make:
+make install
 ```
 
 This installs:
@@ -53,6 +55,8 @@ This installs:
 
 ```bash
 python -m simple_auth server
+# Or using make:
+make server
 ```
 
 You should see:
@@ -74,6 +78,8 @@ Open a **new terminal** and run:
 
 ```bash
 python -m simple_auth client
+# Or using make:
+make client
 ```
 
 The demo will:
@@ -127,6 +133,8 @@ Run the test script to verify everything works:
 python -m pytest tests/test_auth.py
 # Or run directly:
 python tests/test_auth.py
+# Or using make:
+make test
 ```
 
 ## Troubleshooting
@@ -135,10 +143,10 @@ python tests/test_auth.py
 - Check that your callback URL in GitHub settings exactly matches `http://localhost:8080/callback`
 
 ### Error: "Connection refused"
-- Make sure the server is running: `python -m simple_auth server`
+- Make sure the server is running: `make server` or `python -m simple_auth server`
 
 ### Error: Token validation fails
-**Solution**: Get fresh token (they expire). Run `python -m simple_auth client` again to get a fresh token
+**Solution**: Get fresh token (they expire). Run `make client` or `python -m simple_auth client` again to get a fresh token
 
 ### Browser doesn't open
 - Manually copy the URL from the terminal and paste it in your browser

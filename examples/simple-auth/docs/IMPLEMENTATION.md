@@ -252,6 +252,8 @@ Create `config.json` with GitHub OAuth credentials:
 
 ```bash
 python -m simple_auth server
+# Or using make:
+make server
 ```
 
 Server starts on http://localhost:8080 with:
@@ -264,6 +266,8 @@ Server starts on http://localhost:8080 with:
 
 ```bash
 python -m simple_auth client
+# Or using make:
+make client
 ```
 
 Client performs:
@@ -282,6 +286,8 @@ Client performs:
 python -m pytest tests/test_auth.py
 # Or run directly:
 python tests/test_auth.py
+# Or using make:
+make test
 ```
 
 Tests:

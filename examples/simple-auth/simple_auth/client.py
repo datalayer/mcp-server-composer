@@ -170,7 +170,7 @@ class MCPClient:
         Step 1: Discover OAuth metadata from MCP server
         
         Following MCP Authorization spec:
-        1. Make unauthenticated request to server
+        1. Make unauthenticated request to MCP server endpoint
         2. Receive 401 with WWW-Authenticate header
         3. Fetch Protected Resource Metadata (RFC 9728)
         4. Fetch Authorization Server Metadata (RFC 8414)
@@ -180,9 +180,9 @@ class MCPClient:
         print("=" * 70)
         
         try:
-            # Make unauthenticated request
-            print(f"\n📡 Making unauthenticated request to: {self.config.server_url}/tools")
-            response = requests.get(f"{self.config.server_url}/tools", timeout=5)
+            # Make unauthenticated request to SSE endpoint (MCP protocol)
+            print(f"\n📡 Making unauthenticated request to: {self.config.server_url}/sse")
+            response = requests.get(f"{self.config.server_url}/sse", timeout=5)
             
             if response.status_code == 401:
                 print("✅ Received 401 Unauthorized (expected)")
@@ -241,6 +241,7 @@ class MCPClient:
             
             else:
                 print(f"❌ Error: Expected 401, got {response.status_code}")
+                print(f"   Response: {response.text[:200]}")
                 return False
         
         except Exception as e:
@@ -390,25 +391,34 @@ class MCPClient:
             return None
         
         try:
-            response = requests.get(
-                f"{self.config.server_url}/tools",
-                headers={"Authorization": f"Bearer {self.access_token}"},
-                timeout=5
-            )
+            # Use MCP protocol to list tools
+            async def _list_tools():
+                async with sse_client(
+                    url=f"{self.config.server_url}/sse",
+                    headers={"Authorization": f"Bearer {self.access_token}"}
+                ) as (read_stream, write_stream):
+                    async with ClientSession(read_stream, write_stream) as session:
+                        await session.initialize()
+                        tools_list = await session.list_tools()
+                        return tools_list
             
-            if response.status_code == 200:
-                tools = response.json()
+            # Run async function
+            tools_list = asyncio.run(_list_tools())
+            
+            if tools_list:
                 print("✅ Tools retrieved successfully:")
-                for tool in tools.get("tools", []):
-                    print(f"\n   📦 {tool['name']}")
-                    print(f"      {tool['description']}")
-                return tools
+                for tool in tools_list.tools:
+                    print(f"\n   📦 {tool.name}")
+                    print(f"      {tool.description}")
+                return {"tools": [{"name": t.name, "description": t.description} for t in tools_list.tools]}
             else:
-                print(f"❌ Error: Failed to list tools (status: {response.status_code})")
+                print("❌ Error: No tools returned")
                 return None
         
         except Exception as e:
             print(f"❌ Error: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     async def invoke_tool_mcp(self, tool_name: str, arguments: Dict[str, Any]) -> Optional[Any]:
@@ -441,16 +451,31 @@ class MCPClient:
             async with sse_client(
                 url=f"{self.config.server_url}/sse",
                 headers=headers
-            ) as (read, write):
-                async with ClientSession(read, write) as session:
+            ) as (read_stream, write_stream):
+                async with ClientSession(read_stream, write_stream) as session:
                     # Initialize the session
                     await session.initialize()
                     
                     # Call the tool
                     result = await session.call_tool(tool_name, arguments)
                     
-                    print(f"✅ Tool invoked successfully via MCP:")
-                    print(f"   Result: {json.dumps(result.model_dump(), indent=3)}")
+                    # Extract content from result
+                    if hasattr(result, 'content'):
+                        content = result.content
+                        if isinstance(content, list) and len(content) > 0:
+                            # Get the text content from the first item
+                            first_content = content[0]
+                            if hasattr(first_content, 'text'):
+                                result_text = first_content.text
+                            else:
+                                result_text = str(first_content)
+                        else:
+                            result_text = str(content)
+                    else:
+                        result_text = str(result)
+                    
+                    print(f"✅ Tool invoked successfully")
+                    print(f"   Result: {result_text}")
                     
                     return result
         
@@ -458,6 +483,7 @@ class MCPClient:
             print(f"❌ Error invoking tool: {e}")
             import traceback
             traceback.print_exc()
+            return None
             return None
     
     def invoke_tool_http(self, tool_name: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -565,6 +591,13 @@ class MCPClient:
 
 def main():
     """Main entry point"""
+    import sys
+    import io
+    
+    # Ensure stdout uses UTF-8 encoding for emoji support
+    if sys.stdout.encoding != 'utf-8':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    
     try:
         client = MCPClient()
         client.demo()
