@@ -17,18 +17,11 @@ Learning Objectives:
 4. Use MCP SDK client with authenticated transport
 """
 
-import json
-import hashlib
-import secrets
-import base64
-import webbrowser
 from typing import Dict, Optional, Any
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import parse_qs, urlparse, urlencode
-import requests
-import threading
-import time
 import asyncio
+
+# Import shared OAuth client
+from .oauth_client import OAuthClient
 
 # MCP client imports
 try:
@@ -40,343 +33,40 @@ except ImportError:
     print("⚠️  MCP SDK not installed. Install with: pip install mcp")
 
 
-class Config:
-    """Configuration management"""
-    
-    def __init__(self, config_file: str = "config.json"):
-        with open(config_file) as f:
-            self.config = json.load(f)
-    
-    @property
-    def github_client_id(self) -> str:
-        return self.config["github"]["client_id"]
-    
-    @property
-    def github_client_secret(self) -> str:
-        return self.config["github"]["client_secret"]
-    
-    @property
-    def server_url(self) -> str:
-        host = self.config["server"]["host"]
-        port = self.config["server"]["port"]
-        return f"http://{host}:{port}"
-    
-    @property
-    def callback_url(self) -> str:
-        """Callback URL for OAuth - uses port 8081 to avoid conflict with server on 8080"""
-        host = self.config["server"]["host"]
-        return f"http://{host}:8081/callback"
-
-
-class PKCEHelper:
-    """Helper for PKCE (Proof Key for Code Exchange)"""
-    
-    @staticmethod
-    def generate_code_verifier() -> str:
-        """
-        Generate a random code verifier
-        
-        Per RFC 7636: 43-128 characters, [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~"
-        """
-        return base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8').rstrip('=')
-    
-    @staticmethod
-    def generate_code_challenge(verifier: str) -> str:
-        """
-        Generate code challenge from verifier using S256 method
-        
-        challenge = BASE64URL(SHA256(verifier))
-        """
-        digest = hashlib.sha256(verifier.encode('utf-8')).digest()
-        return base64.urlsafe_b64encode(digest).decode('utf-8').rstrip('=')
-
-
-class OAuthCallbackHandler(BaseHTTPRequestHandler):
-    """Handles OAuth callback from GitHub"""
-    
-    authorization_code: Optional[str] = None
-    state: Optional[str] = None
-    
-    def do_GET(self):
-        """Handle callback from OAuth provider"""
-        query_components = parse_qs(urlparse(self.path).query)
-        
-        # Extract authorization code and state
-        if "code" in query_components:
-            OAuthCallbackHandler.authorization_code = query_components["code"][0]
-        
-        if "state" in query_components:
-            OAuthCallbackHandler.state = query_components["state"][0]
-        
-        # Send success response
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html")
-        self.end_headers()
-        
-        html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Authentication Complete</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
-                    margin: 0;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                }
-                .container {
-                    background: white;
-                    padding: 40px;
-                    border-radius: 10px;
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-                    text-align: center;
-                }
-                h1 { color: #667eea; margin-bottom: 20px; }
-                p { color: #666; }
-                .success-icon { font-size: 60px; margin-bottom: 20px; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="success-icon">✅</div>
-                <h1>Authorization Complete!</h1>
-                <p>You can close this window and return to your terminal.</p>
-            </div>
-        </body>
-        </html>
-        """
-        self.wfile.write(html.encode())
-    
-    def log_message(self, format, *args):
-        """Suppress log messages"""
-        pass
-
-
 class MCPClient:
     """MCP Client with OAuth2 authentication"""
     
     def __init__(self, config_file: str = "config.json"):
-        self.config = Config(config_file)
+        # Use shared OAuth client
+        self.oauth = OAuthClient(config_file, verbose=True)
         self.access_token: Optional[str] = None
-        self.server_metadata: Optional[Dict] = None
-        self.auth_server_metadata: Optional[Dict] = None
     
     def discover_metadata(self) -> bool:
         """
         Step 1: Discover OAuth metadata from MCP server
         
-        Following MCP Authorization spec:
-        1. Make unauthenticated request to MCP server endpoint
-        2. Receive 401 with WWW-Authenticate header
-        3. Fetch Protected Resource Metadata (RFC 9728)
-        4. Fetch Authorization Server Metadata (RFC 8414)
+        Delegates to shared OAuthClient
         """
         print("\n" + "=" * 70)
         print("🔍 STEP 1: Discovering OAuth Metadata")
         print("=" * 70)
         
-        try:
-            # Make unauthenticated request to SSE endpoint (MCP protocol)
-            print(f"\n📡 Making unauthenticated request to: {self.config.server_url}/sse")
-            response = requests.get(f"{self.config.server_url}/sse", timeout=5)
-            
-            if response.status_code == 401:
-                print("✅ Received 401 Unauthorized (expected)")
-                
-                # Extract WWW-Authenticate header
-                www_auth = response.headers.get("WWW-Authenticate")
-                if not www_auth:
-                    print("❌ Error: No WWW-Authenticate header found")
-                    return False
-                
-                print(f"   WWW-Authenticate: {www_auth}")
-                
-                # Extract realm (protected resource metadata URL)
-                if 'realm=' in www_auth:
-                    realm = www_auth.split('realm="')[1].split('"')[0]
-                    print(f"   Metadata URL: {realm}")
-                else:
-                    realm = f"{self.config.server_url}/.well-known/oauth-protected-resource"
-                
-                # Fetch Protected Resource Metadata
-                print(f"\n📡 Fetching Protected Resource Metadata from: {realm}")
-                pr_response = requests.get(realm, timeout=5)
-                
-                if pr_response.status_code != 200:
-                    print(f"❌ Error: Failed to fetch protected resource metadata (status: {pr_response.status_code})")
-                    return False
-                
-                self.server_metadata = pr_response.json()
-                print("✅ Protected Resource Metadata received:")
-                print(f"   {json.dumps(self.server_metadata, indent=3)}")
-                
-                # Extract authorization server URL
-                auth_servers = self.server_metadata.get("authorization_servers", [])
-                if not auth_servers:
-                    print("❌ Error: No authorization servers found in metadata")
-                    return False
-                
-                auth_server_url = auth_servers[0]
-                print(f"\n📡 Authorization Server: {auth_server_url}")
-                
-                # Fetch Authorization Server Metadata
-                as_metadata_url = f"{auth_server_url}/.well-known/oauth-authorization-server"
-                print(f"📡 Fetching Authorization Server Metadata from: {as_metadata_url}")
-                
-                as_response = requests.get(as_metadata_url, timeout=5)
-                
-                if as_response.status_code != 200:
-                    print(f"❌ Error: Failed to fetch authorization server metadata (status: {as_response.status_code})")
-                    return False
-                
-                self.auth_server_metadata = as_response.json()
-                print("✅ Authorization Server Metadata received:")
-                print(f"   {json.dumps(self.auth_server_metadata, indent=3)}")
-                
-                return True
-            
-            else:
-                print(f"❌ Error: Expected 401, got {response.status_code}")
-                print(f"   Response: {response.text[:200]}")
-                return False
-        
-        except Exception as e:
-            print(f"❌ Error during metadata discovery: {e}")
-            return False
+        return self.oauth.discover_metadata()
     
     def authenticate(self) -> bool:
         """
         Step 2: Perform OAuth2 authentication flow
         
-        Following OAuth 2.1 with PKCE:
-        1. Generate PKCE parameters
-        2. Build authorization URL
-        3. Open browser for user authentication
-        4. Receive authorization code via callback
-        5. Exchange code for access token
+        Delegates to shared OAuthClient
         """
         print("\n" + "=" * 70)
         print("🔐 STEP 2: OAuth2 Authentication Flow")
         print("=" * 70)
         
-        if not self.auth_server_metadata:
-            print("❌ Error: No authorization server metadata. Run discover_metadata() first.")
-            return False
-        
-        # Generate PKCE parameters
-        print("\n🔑 Generating PKCE parameters...")
-        code_verifier = PKCEHelper.generate_code_verifier()
-        code_challenge = PKCEHelper.generate_code_challenge(code_verifier)
-        print(f"   Code Verifier: {code_verifier[:20]}... (truncated)")
-        print(f"   Code Challenge: {code_challenge[:20]}... (truncated)")
-        
-        # Generate state for CSRF protection
-        state = secrets.token_urlsafe(32)
-        print(f"   State: {state[:20]}... (truncated)")
-        
-        # Build authorization URL
-        auth_endpoint = self.auth_server_metadata["authorization_endpoint"]
-        
-        params = {
-            "client_id": self.config.github_client_id,
-            "redirect_uri": self.config.callback_url,
-            "response_type": "code",
-            "scope": "user",
-            "state": state,
-            "code_challenge": code_challenge,
-            "code_challenge_method": "S256",
-            # RFC 8707: Resource parameter binds token to MCP server
-            "resource": self.config.server_url
-        }
-        
-        auth_url = f"{auth_endpoint}?{urlencode(params)}"
-        
-        print(f"\n🌐 Opening browser for GitHub authentication...")
-        print(f"   URL: {auth_url[:80]}... (truncated)")
-        
-        # Start local callback server on port 8081 (server uses 8080)
-        callback_server = HTTPServer(
-            (self.config.config["server"]["host"], 8081),
-            OAuthCallbackHandler
-        )
-        
-        # Reset class variables
-        OAuthCallbackHandler.authorization_code = None
-        OAuthCallbackHandler.state = None
-        
-        # Run callback server in background thread
-        server_thread = threading.Thread(target=callback_server.handle_request)
-        server_thread.daemon = True
-        server_thread.start()
-        
-        # Open browser
-        webbrowser.open(auth_url)
-        
-        print("⏳ Waiting for user authorization...")
-        print("   Please complete the authentication in your browser.")
-        print(f"   (Callback server listening on port 8081)", flush=True)
-        
-        # Wait for callback
-        timeout = 300  # 5 minutes
-        start_time = time.time()
-        
-        while OAuthCallbackHandler.authorization_code is None:
-            if time.time() - start_time > timeout:
-                print("❌ Timeout waiting for authorization", flush=True)
-                return False
-            time.sleep(0.5)
-        
-        # Give the server thread a moment to finish sending the response
-        time.sleep(0.5)
-        
-        print("✅ Authorization code received", flush=True)
-        
-        # Verify state
-        if OAuthCallbackHandler.state != state:
-            print("❌ Error: State mismatch (possible CSRF attack)", flush=True)
-            return False
-        
-        # Exchange authorization code for access token
-        print("\n🔄 Exchanging authorization code for access token...")
-        
-        token_endpoint = self.auth_server_metadata["token_endpoint"]
-        
-        token_data = {
-            "client_id": self.config.github_client_id,
-            "client_secret": self.config.github_client_secret,
-            "code": OAuthCallbackHandler.authorization_code,
-            "redirect_uri": self.config.callback_url,
-            "code_verifier": code_verifier,
-            "grant_type": "authorization_code"
-        }
-        
-        token_response = requests.post(
-            token_endpoint,
-            data=token_data,
-            headers={"Accept": "application/json"},
-            timeout=10
-        )
-        
-        if token_response.status_code != 200:
-            print(f"❌ Error: Token exchange failed (status: {token_response.status_code})")
-            print(f"   Response: {token_response.text}")
-            return False
-        
-        token_data = token_response.json()
-        self.access_token = token_data.get("access_token")
-        
-        if not self.access_token:
-            print("❌ Error: No access token in response")
-            return False
-        
-        print("✅ Access token received")
-        print(f"   Token: {self.access_token[:20]}... (truncated)")
-        
-        return True
+        if self.oauth.authenticate():
+            self.access_token = self.oauth.get_token()
+            return True
+        return False
     
     def list_tools(self) -> Optional[Dict[str, Any]]:
         """
@@ -394,7 +84,7 @@ class MCPClient:
             # Use MCP protocol to list tools
             async def _list_tools():
                 async with sse_client(
-                    url=f"{self.config.server_url}/sse",
+                    url=f"{self.oauth.get_server_url()}/sse",
                     headers={"Authorization": f"Bearer {self.access_token}"}
                 ) as (read_stream, write_stream):
                     async with ClientSession(read_stream, write_stream) as session:
@@ -449,7 +139,7 @@ class MCPClient:
             
             # Connect to MCP server via SSE
             async with sse_client(
-                url=f"{self.config.server_url}/sse",
+                url=f"{self.oauth.get_server_url()}/sse",
                 headers=headers
             ) as (read_stream, write_stream):
                 async with ClientSession(read_stream, write_stream) as session:
@@ -484,25 +174,6 @@ class MCPClient:
             import traceback
             traceback.print_exc()
             return None
-            return None
-    
-    def invoke_tool_http(self, tool_name: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """
-        Invoke a tool using direct HTTP (for testing/comparison)
-        
-        Note: This is a simplified version. The proper way is to use MCP protocol.
-        """
-        print(f"\n🔧 Invoking tool via HTTP: {tool_name}")
-        print(f"   Parameters: {params}")
-        
-        if not self.access_token:
-            print("❌ Error: No access token. Run authenticate() first.")
-            return None
-        
-        # This would need a custom endpoint on the server
-        # For now, just show that we would use the MCP protocol
-        print("   ℹ️  Use invoke_tool_mcp() for proper MCP protocol invocation")
-        return None
     
     def demo(self):
         """Run a complete demonstration"""

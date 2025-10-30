@@ -7,6 +7,7 @@ Get up and running in 5 minutes!
 - Python 3.8 or higher
 - A GitHub account
 - Basic understanding of OAuth2 (optional, you'll learn as you go!)
+- (Optional) Anthropic API key for AI agent
 
 ## Step 1: Create GitHub OAuth App (2 minutes)
 
@@ -46,10 +47,12 @@ make install
 
 This installs:
 - `requests` - HTTP client
+- `httpx` - Async HTTP client (for agent)
 - `mcp` - Official MCP Python SDK
 - `fastapi` - Web framework for server
 - `uvicorn` - ASGI server
 - `sse-starlette` - Server-Sent Events support
+- `pydantic-ai[mcp]` - AI agent framework with MCP support
 
 ## Step 4: Run the Server (30 seconds)
 
@@ -72,7 +75,7 @@ You should see:
 ✅ Server is ready! All MCP tools require authentication.
 ```
 
-## Step 5: Run the Client (1 minute)
+## Step 5a: Run the Client Demo (1 minute)
 
 Open a **new terminal** and run:
 
@@ -91,11 +94,42 @@ The demo will:
 5. ✅ List available tools using MCP protocol
 6. ✅ Invoke example tools (calculator, greeter) via MCP protocol
 
+## Step 5b: Run the AI Agent (Alternative) 🤖
+
+**NEW!** Try the interactive AI agent instead:
+
+```bash
+# Set your Anthropic API key first
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+python -m simple_auth agent
+# Or using make:
+make agent
+```
+
+The agent will:
+
+1. ✅ Automatically authenticate with OAuth2
+2. ✅ Connect to MCP server with tools
+3. ✅ Launch interactive CLI
+4. ✅ Let you chat in natural language!
+
+**Example conversation**:
+```
+You: What is 15 + 27?
+Agent: [Uses calculator_add tool] The answer is 42!
+
+You: Multiply 8 by 9
+Agent: [Uses calculator_multiply tool] 8 multiplied by 9 equals 72.
+```
+
+📖 **Learn more**: [AGENT.md](AGENT.md)
+
 ## What Happens?
 
 ### First Request (Unauthenticated)
 ```
-Client → Server: GET /tools
+Client → Server: GET /sse
 Server → Client: 401 Unauthorized + WWW-Authenticate header
 ```
 
@@ -113,16 +147,16 @@ Server → Client: {OAuth endpoints and capabilities}
 1. Client generates PKCE parameters (code_verifier, code_challenge)
 2. Client opens browser → GitHub authorization page
 3. User authorizes the application
-4. GitHub redirects → http://localhost:8080/callback?code=...
+4. GitHub redirects → http://localhost:8081/callback?code=...
 5. Client exchanges code + verifier → access_token
 ```
 
 ### Authenticated Requests
 ```
-Client → Server: GET /tools
+Client → Server: GET /sse
              Headers: Authorization: Bearer <token>
 Server → GitHub: Validate token
-Server → Client: 200 OK + list of tools
+Server → Client: 200 OK + SSE connection established + tools available
 ```
 
 ## Testing

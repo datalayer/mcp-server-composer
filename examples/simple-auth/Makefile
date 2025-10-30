@@ -1,4 +1,4 @@
-.PHONY: help install server client test clean
+.PHONY: help install server client agent test clean
 
 # Default target
 help:
@@ -7,6 +7,7 @@ help:
 	@echo "  make install    - Install Python dependencies"
 	@echo "  make server     - Start the MCP server (port 8080)"
 	@echo "  make client     - Run the MCP client demo"
+	@echo "  make agent      - Run the pydantic-ai agent CLI"
 	@echo "  make test       - Run tests"
 	@echo "  make clean      - Remove Python cache files"
 	@echo ""
@@ -15,6 +16,7 @@ help:
 	@echo "  2. make install"
 	@echo "  3. make server    (in one terminal)"
 	@echo "  4. make client    (in another terminal)"
+	@echo "  5. make agent     (for interactive AI agent)"
 
 # Install dependencies
 install:
@@ -31,6 +33,11 @@ server:
 client:
 	@echo "🔐 Starting MCP client..."
 	python -m simple_auth client
+
+# Run the pydantic-ai agent
+agent:
+	@echo "🤖 Starting pydantic-ai agent..."
+	python -m simple_auth agent
 
 # Run tests
 test:

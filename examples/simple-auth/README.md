@@ -8,6 +8,7 @@ A clear, educational example demonstrating OAuth2 authentication for MCP (Model 
 - **MCP Authorization** - Official specification (2025-06-18)
 - **Security** - Token validation, CSRF protection, resource indicators
 - **MCP SDK** - Building servers with FastMCP and clients with MCP SDK
+- **AI Agents** - Building interactive AI agents with pydantic-ai and MCP tools
 
 ## 📖 Documentation
 
@@ -26,6 +27,8 @@ simple-auth/
 ├── simple_auth/           # Python package
 │   ├── server.py         # MCP server with OAuth2 (FastMCP + FastAPI)
 │   ├── client.py         # MCP client with OAuth2 flow
+│   ├── agent.py          # Pydantic AI agent with MCP tools
+│   ├── oauth_client.py   # Shared OAuth authentication logic
 │   ├── __main__.py       # CLI entry point
 │   └── __init__.py
 ├── docs/                  # Documentation
@@ -61,7 +64,22 @@ simple-auth/
    - Makes authenticated requests via MCP protocol (SSE transport)
    - Demonstrates proper MCP tool invocation
 
-### 3. **Configuration** (`config.json`)
+### 3. **Pydantic AI Agent** (`simple_auth/agent.py`) ✨ NEW
+   - Interactive CLI agent powered by **pydantic-ai**
+   - Uses **Anthropic Claude Sonnet 4.5** model
+   - Automatically authenticates with OAuth2
+   - Connects to MCP server with authenticated tools
+   - Natural language interface to MCP tools
+   - Example: "What is 15 + 27?" → Uses calculator_add tool
+
+### 4. **OAuth Client** (`simple_auth/oauth_client.py`)
+   - Shared authentication logic (used by both client.py and agent.py)
+   - Implements OAuth2 with PKCE (RFC 7636)
+   - Metadata discovery (RFC 8414, RFC 9728)
+   - Token management and validation
+   - Reusable for any MCP client implementation
+
+### 5. **Configuration** (`config.json`)
    - GitHub OAuth app credentials
    - Server settings
 
@@ -72,6 +90,7 @@ simple-auth/
 3. **Install** → `make install` (or `pip install -r requirements.txt`)
 4. **Run server** → `make server` (or `python -m simple_auth server`)
 5. **Run client** → `make client` (or `python -m simple_auth client`) in a new terminal
+6. **Run agent** → `make agent` (or `python -m simple_auth agent`) for interactive AI 🤖
 
 👉 **Detailed walkthrough**: [docs/QUICKSTART.md](docs/QUICKSTART.md)
 

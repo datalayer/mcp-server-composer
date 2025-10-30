@@ -7,9 +7,13 @@ Run the server with:
 Run the client with:
     python -m simple_auth client
 
+Run the pydantic-ai agent with:
+    python -m simple_auth agent
+
 Or run directly:
     python -m simple_auth.server
     python -m simple_auth.client
+    python -m simple_auth.agent
 """
 
 import sys
@@ -21,7 +25,8 @@ def main():
         print(__doc__)
         print("\nUsage:")
         print("  python -m simple_auth server    # Run the MCP server")
-        print("  python -m simple_auth client    # Run the MCP client")
+        print("  python -m simple_auth client    # Run the MCP client demo")
+        print("  python -m simple_auth agent     # Run the pydantic-ai agent CLI")
         sys.exit(1)
     
     command = sys.argv[1].lower()
@@ -32,6 +37,9 @@ def main():
     elif command == "client":
         from simple_auth.client import main as client_main
         client_main()
+    elif command == "agent":
+        from simple_auth.agent import main as agent_main
+        agent_main()
     else:
         print(f"Unknown command: {command}")
         print(__doc__)
