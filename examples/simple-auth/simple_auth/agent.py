@@ -27,6 +27,7 @@ Learning Objectives:
 
 import sys
 import io
+import asyncio
 import httpx
 
 # Import shared OAuth client
@@ -82,7 +83,7 @@ def authenticate() -> tuple[str, str]:
     return token, server_url
 
 
-def create_agent(access_token: str, server_url: str) -> Agent:
+def create_agent(access_token: str, server_url: str) -> tuple[Agent, httpx.AsyncClient]:
     """
     Create a pydantic-ai Agent connected to the authenticated MCP server
     
@@ -159,7 +160,7 @@ Be friendly and explain what you're doing."""
     print("   • greeter_goodbye - Say goodbye to someone")
     print("   • get_server_info - Get server information")
     
-    return agent
+    return agent, http_client
 
 
 def main():
@@ -168,12 +169,14 @@ def main():
     if sys.stdout.encoding != 'utf-8':
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     
+    agent = None
+    http_client = None
     try:
         # Step 1: Authenticate with OAuth2
         access_token, server_url = authenticate()
         
         # Step 2: Create agent with MCP server connection
-        agent = create_agent(access_token, server_url)
+        agent, http_client = create_agent(access_token, server_url)
         
         # Step 3: Launch interactive CLI
         print("\n" + "=" * 70)
@@ -195,7 +198,27 @@ def main():
         
         # Launch the CLI interface
         # The agent manages the MCP server lifecycle internally
-        agent.to_cli_sync()
+        async def _run_cli() -> None:
+            assert agent is not None
+            async with agent:
+                await agent.to_cli()
+
+        try:
+            asyncio.run(_run_cli())
+        except BaseExceptionGroup as exc:
+            print("\n❌ Encountered errors while running the CLI:")
+            for idx, sub_exc in enumerate(exc.exceptions, start=1):
+                print(f"  [{idx}] {type(sub_exc).__name__}: {sub_exc}")
+            raise
+        finally:
+            if http_client is not None:
+                try:
+                    asyncio.run(http_client.aclose())
+                except RuntimeError:
+                    # Event loop already closed, create a new one for cleanup
+                    loop = asyncio.new_event_loop()
+                    loop.run_until_complete(http_client.aclose())
+                    loop.close()
     
     except KeyboardInterrupt:
         print("\n\n🛑 Agent stopped by user")
