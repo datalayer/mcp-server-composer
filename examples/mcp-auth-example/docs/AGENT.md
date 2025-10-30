@@ -20,13 +20,13 @@ The agent provides a natural language interface to the MCP server tools, powered
 1. **Start the MCP server** (in one terminal):
    ```bash
    make server
-   # Or: python -m simple_auth server
+   # Or: python -m mcp_auth_example server
    ```
 
 2. **Launch the agent** (in another terminal):
    ```bash
    make agent
-   # Or: python -m simple_auth agent
+   # Or: python -m mcp_auth_example agent
    ```
 
 3. **Authenticate**: The agent will open your browser for GitHub OAuth

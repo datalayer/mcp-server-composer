@@ -1,4 +1,4 @@
-# Simple MCP Server with GitHub OAuth Authentication
+# MCP Authentication Example
 
 A clear, educational example demonstrating OAuth2 authentication for MCP (Model Context Protocol) servers using GitHub as the identity provider.
 
@@ -10,7 +10,20 @@ A clear, educational example demonstrating OAuth2 authentication for MCP (Model 
 - **MCP SDK** - Building servers with FastMCP and clients with MCP SDK
 - **AI Agents** - Building interactive AI agents with pydantic-ai and MCP tools
 
-## 📖 Documentation
+## � Installation
+
+```bash
+# Install the package
+pip install -e .
+
+# Or with dev dependencies
+pip install -e ".[dev]"
+
+# Or use make
+make install
+```
+
+## �📖 Documentation
 
 | File | Purpose | Start Here If... |
 |------|---------|------------------|
@@ -23,14 +36,14 @@ A clear, educational example demonstrating OAuth2 authentication for MCP (Model 
 ## 📁 Project Structure
 
 ```
-simple-auth/
-├── simple_auth/           # Python package
+mcp-auth-example/
+├── mcp_auth_example/      # Python package
 │   ├── server.py         # MCP server with OAuth2 (FastMCP + FastAPI)
 │   ├── client.py         # MCP client with OAuth2 flow
 │   ├── agent.py          # Pydantic AI agent with MCP tools
 │   ├── oauth_client.py   # Shared OAuth authentication logic
 │   ├── __main__.py       # CLI entry point
-│   └── __init__.py
+│   └── __init__.py       # Package initialization
 ├── docs/                  # Documentation
 │   ├── GITHUB.md         # GitHub OAuth app setup
 │   ├── QUICKSTART.md     # 5-minute getting started
@@ -40,14 +53,39 @@ simple-auth/
 ├── tests/                 # Tests
 │   └── test_auth.py      # Basic tests
 ├── README.md             # This file - complete reference
+├── pyproject.toml        # Package configuration
 ├── Makefile              # Convenient make targets
-├── config.json           # OAuth credentials (template)
-└── requirements.txt      # Dependencies
+└── config.json           # OAuth credentials (template)
 ```
 
 ## 🔧 Components
 
-### 1. **MCP Server** (`simple_auth/server.py`)
+### 1. **MCP Server** (`mcp_auth_example/server.py`)
+   - Built with **official MCP Python SDK** (FastMCP)
+   - OAuth2 endpoints integrated with FastAPI
+   - Three example tools (calculator, greeter, server_info)
+   - Token validation middleware
+   - Compatible with both SSE and STDIO transports
+
+### 2. **MCP Client** (`mcp_auth_example/client.py`)
+   - Built with **official MCP Python SDK**
+   - Handles complete OAuth2 flow (PKCE + state)
+   - Automatic metadata discovery
+   - Bearer token authentication
+   - Tests all available tools
+
+### 3. **Pydantic AI Agent** (`mcp_auth_example/agent.py`) ✨ NEW
+   - Interactive CLI agent powered by **pydantic-ai**
+   - Full access to MCP server tools
+   - Claude Sonnet 4.5 model
+   - Conversational interface with streaming responses
+   - Bearer token authentication with MCP server
+
+### 4. **OAuth Client** (`mcp_auth_example/oauth_client.py`)
+
+## 🔧 Components
+
+### 1. **MCP Server** (`mcp_auth_example/server.py`)
    - Built with **official MCP Python SDK** (FastMCP)
    - Protected MCP server with OAuth2 integration
    - Implements MCP Authorization specification (2025-06-18)
@@ -56,7 +94,7 @@ simple-auth/
    - Provides MCP tools via HTTP/SSE transport
    - Tools: calculator (add, multiply), greeter (hello, goodbye), server info
 
-### 2. **MCP Client** (`simple_auth/client.py`)
+### 2. **MCP Client** (`mcp_auth_example/client.py`)
    - Handles OAuth2 flow with GitHub
    - Automatically opens browser for user authentication
    - Manages access tokens
@@ -64,7 +102,7 @@ simple-auth/
    - Makes authenticated requests via MCP protocol (SSE transport)
    - Demonstrates proper MCP tool invocation
 
-### 3. **Pydantic AI Agent** (`simple_auth/agent.py`) ✨ NEW
+### 3. **Pydantic AI Agent** (`mcp_auth_example/agent.py`) ✨ NEW
    - Interactive CLI agent powered by **pydantic-ai**
    - Uses **Anthropic Claude Sonnet 4.5** model
    - Automatically authenticates with OAuth2
@@ -72,7 +110,7 @@ simple-auth/
    - Natural language interface to MCP tools
    - Example: "What is 15 + 27?" → Uses calculator_add tool
 
-### 4. **OAuth Client** (`simple_auth/oauth_client.py`)
+### 4. **OAuth Client** (`mcp_auth_example/oauth_client.py`)
    - Shared authentication logic (used by both client.py and agent.py)
    - Implements OAuth2 with PKCE (RFC 7636)
    - Metadata discovery (RFC 8414, RFC 9728)
@@ -88,9 +126,9 @@ simple-auth/
 1. **Create GitHub OAuth app** → [docs/GITHUB.md](docs/GITHUB.md)
 2. **Configure** → Edit `config.json` with your Client ID and Secret
 3. **Install** → `make install` (or `pip install -r requirements.txt`)
-4. **Run server** → `make server` (or `python -m simple_auth server`)
-5. **Run client** → `make client` (or `python -m simple_auth client`) in a new terminal
-6. **Run agent** → `make agent` (or `python -m simple_auth agent`) for interactive AI 🤖
+4. **Run server** → `make server` (or `python -m mcp_auth_example server`)
+5. **Run client** → `make client` (or `python -m mcp_auth_example client`) in a new terminal
+6. **Run agent** → `make agent` (or `python -m mcp_auth_example agent`) for interactive AI 🤖
 
 👉 **Detailed walkthrough**: [docs/QUICKSTART.md](docs/QUICKSTART.md)
 
@@ -144,7 +182,7 @@ See [docs/GITHUB.md](docs/GITHUB.md) for how to get these credentials.
 
 ```bash
 pip install -r requirements.txt
-python -m simple_auth server
+python -m mcp_auth_example server
 # Or use make:
 make server
 ```
@@ -156,7 +194,7 @@ Server starts on `http://localhost:8080` with OAuth metadata and MCP endpoints.
 In a new terminal:
 
 ```bash
-python -m simple_auth client
+python -m mcp_auth_example client
 # Or use make:
 make client
 ```
@@ -178,13 +216,13 @@ For detailed code explanations and flow diagrams, see:
 
 ### Key Components
 
-**Server** (`simple_auth/server.py`):
+**Server** (`mcp_auth_example/server.py`):
 - Uses FastMCP SDK with `@mcp.tool()` decorators
 - FastAPI for HTTP/SSE transport
 - JWT token validation middleware
 - OAuth metadata endpoints (RFC 9728, RFC 8414)
 
-**Client** (`simple_auth/client.py`):
+**Client** (`mcp_auth_example/client.py`):
 - OAuth2 flow with PKCE (RFC 7636)
 - Browser-based GitHub authentication
 - MCP SDK client with SSE transport

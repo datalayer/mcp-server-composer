@@ -28,7 +28,6 @@ Learning Objectives:
 import sys
 import io
 import asyncio
-import httpx
 
 # Import shared OAuth client
 from .oauth_client import OAuthClient
@@ -83,7 +82,7 @@ def authenticate() -> tuple[str, str]:
     return token, server_url
 
 
-def create_agent(access_token: str, server_url: str) -> tuple[Agent, httpx.AsyncClient]:
+def create_agent(access_token: str, server_url: str) -> Agent:
     """
     Create a pydantic-ai Agent connected to the authenticated MCP server
     
@@ -93,39 +92,19 @@ def create_agent(access_token: str, server_url: str) -> tuple[Agent, httpx.Async
     
     Returns:
         Configured pydantic-ai Agent
-        
-    Note:
-        The httpx client will be managed by pydantic-ai's internal lifecycle.
-        Do NOT close it manually as it will be reused across multiple agent runs.
     """
     print("\n" + "=" * 70)
     print("🏗️  Creating AI Agent with MCP Tools")
     print("=" * 70)
     
-    # Create HTTP client with authentication
-    # IMPORTANT: Don't close this client - pydantic-ai manages it
-    # Use default httpx client settings which work well with long-lived connections
-    http_client = httpx.AsyncClient(
-        headers={"Authorization": f"Bearer {access_token}"},
-        timeout=httpx.Timeout(connect=10.0, read=300.0, write=10.0, pool=5.0),
-        # These settings are crucial for keeping connections alive
-        http2=False,  # Disable HTTP/2 for better SSE compatibility
-        follow_redirects=True,
-        limits=httpx.Limits(
-            max_keepalive_connections=10,
-            max_connections=20,
-            keepalive_expiry=30.0
-        )
-    )
-    
     print(f"\n📡 Connecting to MCP server: {server_url}/sse")
     print("   Using Bearer token authentication")
     
-    # Create MCP server connection with SSE transport
-    # The pydantic-ai Agent will handle the lifecycle via __aenter__/__aexit__
+    # Create MCP server connection with SSE transport and authentication headers
+    # pydantic-ai will manage the http client internally
     mcp_server = MCPServerSSE(
         url=f"{server_url}/sse",
-        http_client=http_client,
+        headers={"Authorization": f"Bearer {access_token}"},
         # Increase read timeout for long-running tool calls
         read_timeout=300.0,  # 5 minutes
         # Allow retries for transient failures
@@ -160,7 +139,7 @@ Be friendly and explain what you're doing."""
     print("   • greeter_goodbye - Say goodbye to someone")
     print("   • get_server_info - Get server information")
     
-    return agent, http_client
+    return agent
 
 
 def main():
@@ -170,13 +149,12 @@ def main():
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     
     agent = None
-    http_client = None
     try:
         # Step 1: Authenticate with OAuth2
         access_token, server_url = authenticate()
         
         # Step 2: Create agent with MCP server connection
-        agent, http_client = create_agent(access_token, server_url)
+        agent = create_agent(access_token, server_url)
         
         # Step 3: Launch interactive CLI
         print("\n" + "=" * 70)
@@ -203,25 +181,15 @@ def main():
             async with agent:
                 await agent.to_cli()
 
-        try:
-            asyncio.run(_run_cli())
-        except BaseExceptionGroup as exc:
-            print("\n❌ Encountered errors while running the CLI:")
-            for idx, sub_exc in enumerate(exc.exceptions, start=1):
-                print(f"  [{idx}] {type(sub_exc).__name__}: {sub_exc}")
-            raise
-        finally:
-            if http_client is not None:
-                try:
-                    asyncio.run(http_client.aclose())
-                except RuntimeError:
-                    # Event loop already closed, create a new one for cleanup
-                    loop = asyncio.new_event_loop()
-                    loop.run_until_complete(http_client.aclose())
-                    loop.close()
+        asyncio.run(_run_cli())
     
     except KeyboardInterrupt:
         print("\n\n🛑 Agent stopped by user")
+    except BaseExceptionGroup as exc:
+        print("\n❌ Encountered errors while running the CLI:")
+        for idx, sub_exc in enumerate(exc.exceptions, start=1):
+            print(f"  [{idx}] {type(sub_exc).__name__}: {sub_exc}")
+        raise
     except FileNotFoundError:
         print("\n❌ Error: config.json not found")
         print("   Please create config.json with your GitHub OAuth credentials")
