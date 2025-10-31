@@ -1,24 +1,25 @@
-# Git + File MCP Server Example
+# Demo MCP Servers Example
 
-This example demonstrates how to use MCP Server Composer to orchestrate multiple MCP servers from a configuration file.
+This example demonstrates how to use MCP Server Composer to manage multiple MCP servers from a configuration file.
 
 ## 🎯 Overview
 
-This configuration launches two MCP servers managed by the composer:
+This configuration launches two simple Python MCP servers managed by the composer:
 
-1. **Git MCP Server** - Git operations (status, log, diff, commit, etc.)
-2. **Filesystem MCP Server** - File system operations (read, write, list, etc.)
+1. **Calculator Server** (`mcp1.py`) - Math operations (add, subtract, multiply, divide)
+2. **Echo Server** (`mcp2.py`) - String operations (ping, echo, reverse, uppercase, lowercase, count_words)
 
 Both servers run in **proxy mode** via STDIO transport and are managed by the MCP Server Composer.
 
 ## 📋 Features
 
-- **Multiple Servers**: Git and Filesystem servers orchestrated together
+- **Two Simple Servers**: Calculator and Echo servers with basic tools
+- **Pure Python**: No external dependencies beyond FastMCP
 - **Configuration-Based**: Define servers in `mcp_server_composer.toml`
 - **Process Management**: Composer manages server lifecycles
 - **STDIO Transport**: Standard input/output for MCP communication
-- **SSE API**: Unified MCP server endpoint for client connections
-- **AI Agent Support**: Connect pydantic-ai agents to the composed server
+- **SSE API**: Unified MCP server endpoint for client connections (coming soon)
+- **AI Agent Support**: Connect pydantic-ai agents to the composed server (coming soon)
 - **Easy Management**: Simple make commands to control everything
 
 ## 🚀 Quick Start
@@ -33,8 +34,11 @@ make install
 
 This will install:
 - `mcp-server-composer` (the orchestrator)
-- `mcp-server-git` (Git operations)
-- `mcp-server-filesystem` (File operations)
+- `fastmcp` (for the demo MCP servers)
+
+The example includes two simple Python MCP servers:
+- `mcp1.py` - Calculator tools (add, subtract, multiply, divide)
+- `mcp2.py` - Echo tools (ping, echo, reverse, uppercase, lowercase, count_words)
 
 ### 2. Start the Composer
 
@@ -44,7 +48,7 @@ make start
 
 The composer will:
 - Read configuration from `mcp_server_composer.toml`
-- Start both Git and Filesystem MCP servers as child processes
+- Start both Calculator and Echo MCP servers as child processes
 - Manage their lifecycles (coming soon: unified SSE endpoint)
 
 ### 3. Use the AI Agent (Coming Soon)
@@ -61,14 +65,15 @@ make agent
 
 The agent is designed to:
 - Connect to the MCP Server Composer via SSE
-- Access tools from both Git and Filesystem servers through a unified interface
+- Access tools from both Calculator and Echo servers through a unified interface
 - Provide an interactive CLI powered by Anthropic Claude
 
 Example interactions (once SSE endpoint is available):
-- "Show me the git log"
-- "What is the status of the repository?"
-- "Read the README.md file"
-- "List files in /tmp"
+- "What is 15 plus 27?"
+- "Multiply 8 by 9"
+- "Reverse the text 'hello world'"
+- "Convert 'Hello World' to uppercase"
+- "Count the words in 'The quick brown fox jumps'"
 
 ### 4. Stop the Composer
 

@@ -4,12 +4,12 @@
 Pydantic AI Agent with MCP Server Composer
 
 This agent demonstrates how to connect a pydantic-ai agent to the MCP Server Composer.
-The composer unifies multiple MCP servers (git and filesystem) into a single endpoint.
+The composer manages multiple MCP servers and exposes them through a unified endpoint.
 
 Features:
 - Connection to MCP Server Composer via SSE transport
 - Interactive CLI interface powered by pydantic-ai
-- Access to tools from both git and filesystem MCP servers
+- Access to Calculator and Echo server tools through the composer
 - Uses Anthropic Claude Sonnet 4.5 model
 
 Usage:
@@ -23,6 +23,10 @@ Learning Objectives:
 1. Integrate pydantic-ai Agent with MCP Server Composer
 2. Access multiple MCP servers through a unified interface
 3. Build interactive CLI agents with pydantic-ai
+
+Servers:
+- Calculator Server (mcp1.py): add, subtract, multiply, divide
+- Echo Server (mcp2.py): ping, echo, reverse, uppercase, lowercase, count_words
 """
 
 import sys
@@ -56,7 +60,7 @@ def create_agent(server_url: str = "http://localhost:8080") -> Agent:
     print("=" * 70)
     
     print(f"\n📡 Connecting to MCP Server Composer: {server_url}/sse")
-    print("   Unified access to Git and Filesystem MCP servers")
+    print("   Unified access to Calculator and Echo servers")
     
     # Create MCP server connection with SSE transport
     # No authentication required for this example
@@ -71,27 +75,27 @@ def create_agent(server_url: str = "http://localhost:8080") -> Agent:
     print("\n🤖 Initializing Agent with Anthropic Claude Sonnet 4.5")
     
     # Create Agent with Anthropic Claude Sonnet 4.5
-    # The agent will have access to all tools from both MCP servers
+    # The agent will have access to all tools from both servers
     agent = Agent(
         model='anthropic:claude-sonnet-4-0',
         toolsets=[mcp_server],
-        system_prompt="""You are a helpful AI assistant with access to Git and Filesystem MCP server tools.
+        system_prompt="""You are a helpful AI assistant with access to Calculator and Echo MCP server tools.
 
 The tools are provided by two MCP servers managed by the composer:
-- Git server: Tools for git operations (git:status, git:log, git:diff, etc.)
-- Filesystem server: Tools for file operations (filesystem:read_file, filesystem:write_file, etc.)
+- Calculator server: Math operations (calculator:add, calculator:subtract, calculator:multiply, calculator:divide)
+- Echo server: String operations (echo:ping, echo:echo, echo:reverse, echo:uppercase, echo:lowercase, echo:count_words)
 
 Tool names are prefixed with their server name to avoid conflicts.
 
-When users ask you to work with git repositories or files, use the appropriate tools.
+When users ask you to perform calculations or string operations, use the appropriate tools.
 Be friendly and explain what you're doing."""
     )
     
     print("✅ Agent created successfully!")
     print("\n📦 The agent has access to tools from:")
-    print("   • Git MCP Server - Repository operations")
-    print("   • Filesystem MCP Server - File operations")
-    print("\n   Tool names are prefixed (e.g., git:log, filesystem:read_file)")
+    print("   • Calculator Server - Math operations")
+    print("   • Echo Server - String operations")
+    print("\n   Tool names are prefixed (e.g., calculator:add, echo:reverse)")
     
     return agent
 
@@ -118,17 +122,18 @@ def main():
         print("🚀 Launching Interactive CLI")
         print("=" * 70)
         print("\nYou can now chat with the AI agent!")
-        print("The agent has access to Git and Filesystem tools.")
+        print("The agent has access to Calculator and Echo server tools.")
         print("\nCommands:")
         print("  /exit     - Exit the CLI")
         print("  /markdown - Toggle markdown rendering")
         print("  /multiline - Enter multiline mode")
         print("  /cp       - Copy last response to clipboard")
         print("\nExamples:")
-        print("  'Show me the git log'")
-        print("  'What is the status of the repository?'")
-        print("  'Read the README.md file'")
-        print("  'List files in /tmp directory'")
+        print("  'What is 15 plus 27?'")
+        print("  'Multiply 8 by 9'")
+        print("  'Reverse the text hello world'")
+        print("  'Convert Python to uppercase'")
+        print("  'How many words are in the quick brown fox'")
         print("\n" + "=" * 70 + "\n")
         
         # Launch the CLI interface

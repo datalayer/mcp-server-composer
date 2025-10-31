@@ -1,30 +1,37 @@
-# Git-File Example - Implementation Status
+# Demo MCP Servers Example - Implementation Status
 
 ## ✅ Completed
 
-### 1. Configuration Structure
+### 1. Demo MCP Servers
+- ✅ Created `mcp1.py` - Calculator server with math tools (add, subtract, multiply, divide)
+- ✅ Created `mcp2.py` - Echo server with string tools (ping, echo, reverse, uppercase, lowercase, count_words)
+- ✅ Both servers use FastMCP for clean, simple implementation
+- ✅ Both servers run via STDIO transport
+
+### 2. Configuration Structure
 - ✅ Created `mcp_server_composer.toml` with nested `[[servers.proxied.stdio]]` structure
-- ✅ Configured Git MCP server with repository path
-- ✅ Configured Filesystem MCP server with /tmp access
+- ✅ Configured Calculator server (python mcp1.py)
+- ✅ Configured Echo server (python mcp2.py)
 - ✅ Set restart policy to "never" for development testing
 
-### 2. Process Management
+### 3. Process Management
 - ✅ Implemented `serve` command in CLI
 - ✅ Integrated with ProcessManager for child process management
-- ✅ Processes start successfully (Git and Filesystem servers)
+- ✅ Both servers start successfully
 - ✅ Clean shutdown on Ctrl+C
 - ✅ Disabled auto-restart for development
 
-### 3. Documentation & Tooling
-- ✅ Created comprehensive README.md
-- ✅ Created Makefile with install, start, agent commands
-- ✅ Created agent.py demonstrating pydantic-ai integration pattern
-- ✅ Added agent installation instructions
+### 4. Documentation & Tooling
+- ✅ Updated README.md for demo servers
+- ✅ Updated Makefile with correct dependencies
+- ✅ Updated agent.py for Calculator and Echo servers
+- ✅ Added clear examples and usage instructions
 
-### 4. Agent Example
-- ✅ Created `agent.py` based on mcp-auth example
+### 5. Agent Example
+- ✅ Updated `agent.py` based on mcp-auth example
 - ✅ Removed authentication (anonymous access)
 - ✅ Configured for SSE connection to http://localhost:8080/sse
+- ✅ Updated prompts for Calculator and Echo tools
 - ✅ Added interactive CLI with example prompts
 
 ## 🚧 Work in Progress
@@ -69,25 +76,22 @@ The `serve` command currently:
 
 ### When you run `make start`:
 1. ✅ ProcessManager starts
-2. ✅ Git server starts as subprocess (PID assigned)
-3. ✅ Filesystem server starts as subprocess (PID assigned)
-4. ⚠️ Servers may exit immediately (STDIO servers expect client input)
-5. ❌ No SSE endpoint is exposed
-6. ❌ Agent cannot connect
+2. ✅ Calculator server starts as subprocess (PID assigned)
+3. ✅ Echo server starts as subprocess (PID assigned)
+4. ✅ Both servers run successfully
+5. ⚠️ Servers may exit if no client connects (STDIO servers expect input)
+6. ❌ No SSE endpoint is exposed yet
+7. ❌ Agent cannot connect yet
 
-### Strange Behavior - Calculator Opening
-**Issue**: When running `uvx mcp-server-git` or `uvx mcp-server-filesystem`, a calculator app opens on desktop.
+### Issue: Calculator App Opening - SOLVED ✅
+**Previous Issue**: The `mcp-server-filesystem` package from PyPI was fake and launched gnome-calculator.
 
-**Likely Cause**:
-- `uvx` might be resolving to the wrong package
-- System has a conflicting `mcp-server-*` command
-- Package installation issue
-
-**Solutions to try**:
-1. Check what `uvx` resolves to: `which uvx`
-2. Try direct python execution: `python -m mcp_server_git`
-3. Use pip-installed commands directly
-4. Check if `mcp-server-git` is properly installed: `pip list | grep mcp`
+**Solution**: Created custom Python MCP servers (mcp1.py, mcp2.py) with real tools:
+- Calculator server: add, subtract, multiply, divide
+- Echo server: ping, echo, reverse, uppercase, lowercase, count_words
+- Both use FastMCP for proper MCP protocol implementation
+- No external packages needed (except fastmcp)
+- Clean, simple, and working correctly ✅
 
 ## 🎯 Next Steps
 

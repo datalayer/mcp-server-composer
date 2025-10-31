@@ -18,10 +18,14 @@ install:
 	@echo "Installing mcp-server-composer..."
 	pip install -e ../..
 	@echo ""
-	@echo "Installing MCP servers..."
-	pip install mcp-server-git mcp-server-filesystem
+	@echo "Installing FastMCP for demo servers..."
+	pip install fastmcp
 	@echo ""
 	@echo "✓ Installation complete!"
+	@echo ""
+	@echo "This example uses two simple Python MCP servers:"
+	@echo "  • mcp1.py - Calculator tools (add, subtract, multiply, divide)"
+	@echo "  • mcp2.py - Echo tools (ping, echo, reverse, uppercase, etc.)"
 	@echo ""
 	@echo "To start:"
 	@echo "  make start"
