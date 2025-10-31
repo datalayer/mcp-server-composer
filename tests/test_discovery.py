@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 from mcp_server_composer.discovery import MCPServerDiscovery, MCPServerInfo
 from mcp_server_composer.exceptions import MCPDiscoveryError, MCPImportError
+from mcp_server_composer.config import EmbeddedServerConfig, MCPComposerConfig, ServersConfig, EmbeddedServersConfig
 
 
 class TestMCPServerDiscovery:
@@ -291,6 +292,170 @@ class TestMCPServerInfo:
         str_repr = str(info)
         assert "test-package" in str_repr
         assert "1.0.0" in str_repr
+
+
+class TestConfigBasedDiscovery:
+    """Test cases for config-based discovery."""
+
+    @patch('mcp_server_composer.discovery.importlib.import_module')
+    def test_discover_from_config_with_single_server(self, mock_import):
+        """Test discovering servers from configuration with single server."""
+        # Mock the imported module
+        mock_module = Mock()
+        mock_server = Mock()
+        mock_module.mcp = mock_server
+        mock_import.return_value = mock_module
+        
+        # Create server config
+        server_configs = [
+            EmbeddedServerConfig(
+                name="test-server",
+                package="test_mcp_server",
+                enabled=True
+            )
+        ]
+        
+        discovery = MCPServerDiscovery()
+        servers = discovery.discover_from_config(server_configs)
+        
+        assert "test-server" in servers
+        assert len(servers) == 1
+        mock_import.assert_called_once_with("test_mcp_server")
+
+    @patch('mcp_server_composer.discovery.importlib.import_module')
+    def test_discover_from_config_with_full_config(self, mock_import):
+        """Test discovering servers from full MCPComposerConfig."""
+        # Mock the imported module
+        mock_module = Mock()
+        mock_server = Mock()
+        mock_module.mcp = mock_server
+        mock_import.return_value = mock_module
+        
+        # Create full config
+        config = MCPComposerConfig(
+            servers=ServersConfig(
+                embedded=EmbeddedServersConfig(
+                    servers=[
+                        EmbeddedServerConfig(
+                            name="server1",
+                            package="package1",
+                            enabled=True
+                        ),
+                        EmbeddedServerConfig(
+                            name="server2",
+                            package="package2",
+                            enabled=True
+                        )
+                    ]
+                )
+            )
+        )
+        
+        discovery = MCPServerDiscovery()
+        servers = discovery.discover_from_config(config)
+        
+        assert "server1" in servers
+        assert "server2" in servers
+        assert len(servers) == 2
+
+    @patch('mcp_server_composer.discovery.importlib.import_module')
+    def test_discover_from_config_skip_disabled(self, mock_import):
+        """Test that disabled servers are skipped."""
+        # Mock the imported module
+        mock_module = Mock()
+        mock_server = Mock()
+        mock_module.mcp = mock_server
+        mock_import.return_value = mock_module
+        
+        # Create server config with disabled server
+        server_configs = [
+            EmbeddedServerConfig(
+                name="enabled-server",
+                package="enabled_package",
+                enabled=True
+            ),
+            EmbeddedServerConfig(
+                name="disabled-server",
+                package="disabled_package",
+                enabled=False
+            )
+        ]
+        
+        discovery = MCPServerDiscovery()
+        servers = discovery.discover_from_config(server_configs)
+        
+        assert "enabled-server" in servers
+        assert "disabled-server" not in servers
+        assert len(servers) == 1
+        mock_import.assert_called_once()  # Only called for enabled server
+
+    @patch('mcp_server_composer.discovery.importlib.import_module')
+    def test_discover_from_config_with_version(self, mock_import):
+        """Test discovering server with version constraint."""
+        # Mock the imported module
+        mock_module = Mock()
+        mock_server = Mock()
+        mock_module.mcp = mock_server
+        mock_import.return_value = mock_module
+        
+        # Create server config with version
+        server_configs = [
+            EmbeddedServerConfig(
+                name="versioned-server",
+                package="versioned_package",
+                version=">=1.0.0",
+                enabled=True
+            )
+        ]
+        
+        discovery = MCPServerDiscovery()
+        servers = discovery.discover_from_config(server_configs)
+        
+        assert "versioned-server" in servers
+        assert len(servers) == 1
+
+    @patch('mcp_server_composer.discovery.importlib.import_module')
+    def test_discover_from_config_import_error(self, mock_import):
+        """Test error handling when import fails."""
+        # Mock import to raise error
+        mock_import.side_effect = ImportError("Module not found")
+        
+        server_configs = [
+            EmbeddedServerConfig(
+                name="failing-server",
+                package="nonexistent_package",
+                enabled=True
+            )
+        ]
+        
+        discovery = MCPServerDiscovery()
+        with pytest.raises(MCPDiscoveryError):
+            discovery.discover_from_config(server_configs)
+
+    @patch('mcp_server_composer.discovery.importlib.import_module')
+    def test_discover_from_config_custom_name(self, mock_import):
+        """Test that custom server name is used instead of package name."""
+        # Mock the imported module
+        mock_module = Mock()
+        mock_server = Mock()
+        mock_module.mcp = mock_server
+        mock_import.return_value = mock_module
+        
+        # Create server config with custom name
+        server_configs = [
+            EmbeddedServerConfig(
+                name="my-custom-name",
+                package="actual_package_name",
+                enabled=True
+            )
+        ]
+        
+        discovery = MCPServerDiscovery()
+        servers = discovery.discover_from_config(server_configs)
+        
+        # Should use the custom name, not package name
+        assert "my-custom-name" in servers
+        assert "actual_package_name" not in servers
 
 
 if __name__ == "__main__":

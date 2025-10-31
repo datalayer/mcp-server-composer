@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # MCP Server Composer
+  mcp-composer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-composer
+    ports:
+      - "8000:8000"
+    volumes:
+      # Configuration
+      - ./examples/mcp_server_composer.toml:/app/config.toml:ro
+      # Data directory for file-based MCP servers
+      - mcp-data:/data
+      # Logs
+      - mcp-logs:/var/log/mcp-composer
+    environment:
+      - MCP_COMPOSER_HOST=0.0.0.0
+      - MCP_COMPOSER_PORT=8000
+      - MCP_COMPOSER_LOG_LEVEL=INFO
+      - MCP_COMPOSER_LOG_FORMAT=json
+      - MCP_COMPOSER_METRICS_ENABLED=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mcp-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcp-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./resources/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    depends_on:
+      - mcp-composer
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mcp-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./resources/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./resources/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    depends_on:
+      - prometheus
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: mcp-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./resources/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    depends_on:
+      - mcp-composer
+    profiles:
+      - production
+
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  mcp-data:
+    driver: local
+  mcp-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

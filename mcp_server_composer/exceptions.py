@@ -88,3 +88,17 @@ class MCPPromptConflictError(MCPCompositionError):
         self.prompt_name = prompt_name
         self.conflicting_servers = conflicting_servers
         self.resolution_strategy = resolution_strategy
+
+
+class MCPConfigurationError(MCPComposerError):
+    """Raised when configuration loading or validation fails."""
+
+    def __init__(
+        self,
+        message: str,
+        config_path: Optional[str] = None,
+        validation_errors: Optional[List[str]] = None,
+    ) -> None:
+        super().__init__(message)
+        self.config_path = config_path
+        self.validation_errors = validation_errors or []
