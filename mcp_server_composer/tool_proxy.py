@@ -132,7 +132,8 @@ class ToolProxy:
         from .composer import ConflictResolution
         
         if self.composer.conflict_resolution == ConflictResolution.PREFIX:
-            prefixed_name = f"{server_name}:{tool_name}"
+            # Use underscore instead of colon for tool names (required by some LLM APIs)
+            prefixed_name = f"{server_name}_{tool_name}"
         else:
             prefixed_name = tool_name
         

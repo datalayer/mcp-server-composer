@@ -232,7 +232,9 @@ async def run_server(config, args: argparse.Namespace) -> int:
     # Create composer
     conflict_strategy = ConflictResolution.PREFIX
     if hasattr(config.composer, 'conflict_resolution'):
-        conflict_strategy = config.composer.conflict_resolution
+        # Convert from ConflictResolutionStrategy (config) to ConflictResolution (composer)
+        config_strategy = config.composer.conflict_resolution
+        conflict_strategy = ConflictResolution(config_strategy.value)
     
     composer = MCPServerComposer(
         composed_server_name=config.composer.name,
@@ -304,6 +306,25 @@ async def run_server(config, args: argparse.Namespace) -> int:
         print()
         print(f"✓ Unified MCP server is now running!")
         print(f"  Total tools: {len(composer.composed_tools)}")
+        print()
+        
+        # List all available tools
+        if composer.composed_tools:
+            print("🛠️  Available Tools:")
+            for tool_name in sorted(composer.composed_tools.keys()):
+                tool_def = composer.composed_tools[tool_name]
+                # Extract parameter names from inputSchema
+                params = []
+                if "inputSchema" in tool_def:
+                    schema = tool_def["inputSchema"]
+                    if "properties" in schema:
+                        params = list(schema["properties"].keys())
+                
+                # Format parameters
+                params_str = f"({', '.join(params)})" if params else "()"
+                print(f"  • {tool_name}{params_str}")
+        
+        print()
         print("=" * 70)
         print()
         print("Press Ctrl+C to stop all servers...")
