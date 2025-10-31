@@ -13,12 +13,66 @@ Both servers run in **proxy mode** via STDIO transport and are managed by the MC
 
 ## 📋 Features
 
-- **Multiple Servers**: Git and Filesystem servers running together
-- **Anonymous Access**: No authentication required
-- **Unified Interface**: Access both servers through a single API
-- **Tool Prefixing**: Tools are prefixed with server name (e.g., `git:log`, `filesystem:read_file`)
-- **Web UI**: Manage and monitor servers through browser interface
-- **REST API**: Full programmatic control via HTTP endpoints
+- **Multiple Servers**: Git and Filesystem servers orchestrated together
+- **Configuration-Based**: Define servers in `mcp_server_composer.toml`
+- **Process Management**: Composer manages server lifecycles
+- **STDIO Transport**: Standard input/output for MCP communication
+- **SSE API**: Unified MCP server endpoint for client connections
+- **AI Agent Support**: Connect pydantic-ai agents to the composed server
+- **Easy Management**: Simple make commands to control everything
+
+## 🚀 Quick Start
+
+> **⚠️ Note**: The serve command currently starts the child MCP servers but does not yet expose a unified SSE endpoint. The composer architecture is being implemented to provide a unified MCP protocol server that proxies requests to the child servers. For now, the example demonstrates configuration-based process management.
+
+### 1. Install Dependencies
+
+```bash
+make install
+```
+
+This will install:
+- `mcp-server-composer` (the orchestrator)
+- `mcp-server-git` (Git operations)
+- `mcp-server-filesystem` (File operations)
+
+### 2. Start the Composer
+
+```bash
+make start
+```
+
+The composer will:
+- Read configuration from `mcp_server_composer.toml`
+- Start both Git and Filesystem MCP servers as child processes
+- Manage their lifecycles (coming soon: unified SSE endpoint)
+
+### 3. Use the AI Agent (Coming Soon)
+
+> **🚧 Work in Progress**: The agent integration requires the unified SSE endpoint to be implemented in the serve command. The agent.py file is ready and demonstrates the intended usage pattern.
+
+```bash
+# Install pydantic-ai
+make install-agent
+
+# Run the agent (requires SSE endpoint - coming soon!)
+make agent
+```
+
+The agent is designed to:
+- Connect to the MCP Server Composer via SSE
+- Access tools from both Git and Filesystem servers through a unified interface
+- Provide an interactive CLI powered by Anthropic Claude
+
+Example interactions (once SSE endpoint is available):
+- "Show me the git log"
+- "What is the status of the repository?"
+- "Read the README.md file"
+- "List files in /tmp"
+
+### 4. Stop the Composer
+
+Press `Ctrl+C` in the terminal where the composer is running.
 
 ## � Features
 

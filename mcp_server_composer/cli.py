@@ -224,7 +224,7 @@ async def run_server(config, args: argparse.Namespace) -> int:
     from .config import StdioProxiedServerConfig
     
     # Create process manager
-    process_manager = ProcessManager(auto_restart=True)
+    process_manager = ProcessManager(auto_restart=False)
     
     try:
         # Start process manager

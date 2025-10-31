@@ -12,6 +12,7 @@ log_level = "INFO"
 [[servers.proxied.stdio]]
 name = "git"
 command = ["uvx", "mcp-server-git", "--repository", "."]
+restart_policy = "never"  # Don't restart - for testing process management
 # Optional environment variables for git server
 # env = { GIT_AUTHOR_NAME = "MCP Bot", GIT_AUTHOR_EMAIL = "bot@example.com" }
 
@@ -21,5 +22,6 @@ command = ["uvx", "mcp-server-git", "--repository", "."]
 [[servers.proxied.stdio]]
 name = "filesystem"
 command = ["uvx", "mcp-server-filesystem", "/tmp"]
+restart_policy = "never"  # Don't restart - for testing process management
 # Optional environment variables for filesystem server
 # env = { ALLOWED_OPERATIONS = "read,write,list" }
