@@ -6,6 +6,7 @@ and proxies tool calls to them.
 """
 
 import asyncio
+import inspect
 import json
 import logging
 from typing import Any, Dict, Optional
@@ -139,9 +140,50 @@ class ToolProxy:
         
         # Create a closure to capture the current values
         def make_proxy_tool(srv_name: str, tl_name: str, proc: Process, schema: Dict[str, Any]):
-            async def proxy_tool(**kwargs) -> str:
+            """Create proxy function with proper signature based on schema."""
+            
+            # Get parameter info from schema
+            properties = schema.get("properties", {}) if schema else {}
+            required_params = schema.get("required", []) if schema else []
+            
+            # Build parameter list with proper types
+            params = []
+            annotations = {}
+            
+            for param_name, param_spec in properties.items():
+                # Map JSON Schema types to Python types
+                param_type = param_spec.get("type", "string")
+                if param_type == "number":
+                    python_type = float
+                elif param_type == "integer":
+                    python_type = int
+                elif param_type == "boolean":
+                    python_type = bool
+                elif param_type == "array":
+                    python_type = list
+                elif param_type == "object":
+                    python_type = dict
+                else:
+                    python_type = str
+                
+                annotations[param_name] = python_type
+                
+                # Create parameter with proper default
+                if param_name in required_params:
+                    param = inspect.Parameter(param_name, inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=python_type)
+                else:
+                    param = inspect.Parameter(param_name, inspect.Parameter.POSITIONAL_OR_KEYWORD, default=None, annotation=python_type)
+                params.append(param)
+            
+            # Add return annotation
+            annotations["return"] = str
+            
+            # Create the actual async function that will be called
+            async def _proxy_impl(**kwargs) -> str:
                 """Proxy function that forwards tool calls to child process."""
                 try:
+                    logger.info(f"Tool {tl_name} called with arguments: {kwargs}")
+                    
                     request = {
                         "jsonrpc": "2.0",
                         "id": "tool-call",
@@ -152,7 +194,9 @@ class ToolProxy:
                         }
                     }
                     
+                    logger.debug(f"Sending request to {srv_name}: {json.dumps(request)}")
                     response = await self._send_request(proc, request)
+                    logger.debug(f"Response from {srv_name}: {response}")
                     
                     if response and "result" in response:
                         result = response["result"]
@@ -161,43 +205,35 @@ class ToolProxy:
                             content = result["content"]
                             if isinstance(content, list) and len(content) > 0:
                                 # Return the text from the first content item
-                                return content[0].get("text", str(content))
+                                text_result = content[0].get("text", str(content))
+                                logger.info(f"Tool {tl_name} returned: {text_result}")
+                                return text_result
                             return str(content)
                         return str(result)
                     elif response and "error" in response:
                         error = response["error"]
-                        raise RuntimeError(f"Tool execution error: {error.get('message', 'Unknown error')}")
+                        error_msg = f"Tool execution error: {error.get('message', 'Unknown error')}"
+                        logger.error(error_msg)
+                        raise RuntimeError(error_msg)
                     else:
                         raise RuntimeError("No response from tool execution")
                         
                 except Exception as e:
-                    logger.error(f"Error calling tool {tl_name} on {srv_name}: {e}")
+                    logger.error(f"Error calling tool {tl_name} on {srv_name}: {e}", exc_info=True)
                     raise
             
-            # Add parameter annotations from schema
-            if schema and "properties" in schema:
-                annotations = {}
-                for param_name, param_spec in schema["properties"].items():
-                    # Map JSON Schema types to Python types
-                    param_type = param_spec.get("type", "string")
-                    if param_type == "number":
-                        annotations[param_name] = float
-                    elif param_type == "integer":
-                        annotations[param_name] = int
-                    elif param_type == "boolean":
-                        annotations[param_name] = bool
-                    elif param_type == "array":
-                        annotations[param_name] = list
-                    elif param_type == "object":
-                        annotations[param_name] = dict
-                    else:
-                        annotations[param_name] = str
-                
-                # Add return type annotation
-                annotations["return"] = str
-                
-                # Set annotations on the function
-                proxy_tool.__annotations__ = annotations
+            # Create wrapper function with proper signature
+            # This function will have the correct parameters in its signature
+            async def proxy_tool(*args, **kwargs) -> str:
+                # Convert positional args to kwargs based on parameter order
+                for i, param in enumerate(params):
+                    if i < len(args):
+                        kwargs[param.name] = args[i]
+                return await _proxy_impl(**kwargs)
+            
+            # Set the proper signature on the wrapper
+            proxy_tool.__signature__ = inspect.Signature(parameters=params, return_annotation=str)
+            proxy_tool.__annotations__ = annotations
             
             return proxy_tool
         
@@ -225,6 +261,7 @@ class ToolProxy:
             # This ensures the LLM sees the correct parameter types from the child server
             if input_schema:
                 tool_obj.parameters = input_schema
+                logger.debug(f"Tool {prefixed_name} parameters after override: {json.dumps(input_schema, indent=2)}")
             
             self.composer.composed_server._tool_manager._tools[tool_obj.name] = tool_obj
             logger.info(f"Registered proxy tool: {tool_obj.name} with schema: {list(input_schema.get('properties', {}).keys())}")
