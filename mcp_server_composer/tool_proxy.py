@@ -138,7 +138,7 @@ class ToolProxy:
             prefixed_name = tool_name
         
         # Create a closure to capture the current values
-        def make_proxy_tool(srv_name: str, tl_name: str, proc: Process):
+        def make_proxy_tool(srv_name: str, tl_name: str, proc: Process, schema: Dict[str, Any]):
             async def proxy_tool(**kwargs) -> str:
                 """Proxy function that forwards tool calls to child process."""
                 try:
@@ -174,28 +174,60 @@ class ToolProxy:
                     logger.error(f"Error calling tool {tl_name} on {srv_name}: {e}")
                     raise
             
+            # Add parameter annotations from schema
+            if schema and "properties" in schema:
+                annotations = {}
+                for param_name, param_spec in schema["properties"].items():
+                    # Map JSON Schema types to Python types
+                    param_type = param_spec.get("type", "string")
+                    if param_type == "number":
+                        annotations[param_name] = float
+                    elif param_type == "integer":
+                        annotations[param_name] = int
+                    elif param_type == "boolean":
+                        annotations[param_name] = bool
+                    elif param_type == "array":
+                        annotations[param_name] = list
+                    elif param_type == "object":
+                        annotations[param_name] = dict
+                    else:
+                        annotations[param_name] = str
+                
+                # Add return type annotation
+                annotations["return"] = str
+                
+                # Set annotations on the function
+                proxy_tool.__annotations__ = annotations
+            
             return proxy_tool
         
-        # Create the proxy function with closure
-        proxy_func = make_proxy_tool(server_name, tool_name, process)
+        # Create the proxy function with closure, passing the inputSchema
+        input_schema = tool_def.get("inputSchema", {})
+        proxy_func = make_proxy_tool(server_name, tool_name, process, input_schema)
         
         # Set function metadata (for Python introspection)
-        # Note: Function name must be valid Python identifier
-        safe_name = prefixed_name.replace(":", "_").replace("-", "_")
+        # Replace any remaining special characters with underscores
+        safe_name = prefixed_name.replace("-", "_").replace(":", "_")
         proxy_func.__name__ = safe_name
         proxy_func.__doc__ = tool_def.get("description", "")
         
-        # Register with FastMCP server - create a Tool object with the prefixed name
-        # FastMCP's ToolManager stores Tool objects, not raw functions
+        # Register with FastMCP server
+        # Use from_function to create proper Tool object, then override parameters
         try:
-            # Use the prefixed_name (with colons) for the MCP tool name
+            # Create Tool from function (this generates fn_metadata)
             tool_obj = Tool.from_function(
                 proxy_func,
-                name=prefixed_name,  # This is the MCP protocol name (can have colons)
+                name=prefixed_name,
                 description=tool_def.get("description", "")
             )
+            
+            # Override the parameters with the actual MCP inputSchema
+            # This ensures the LLM sees the correct parameter types from the child server
+            if input_schema:
+                tool_obj.parameters = input_schema
+            
             self.composer.composed_server._tool_manager._tools[tool_obj.name] = tool_obj
-            logger.info(f"Registered proxy tool: {tool_obj.name} (maps to {tool_name} on {server_name})")
+            logger.info(f"Registered proxy tool: {tool_obj.name} with schema: {list(input_schema.get('properties', {}).keys())}")
         except Exception as e:
             logger.error(f"Failed to register tool {prefixed_name}: {e}", exc_info=True)
             raise
