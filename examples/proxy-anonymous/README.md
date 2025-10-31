@@ -308,7 +308,7 @@ GIT_AUTHOR_EMAIL = "bot@example.com"
 | `make examples` | Show API examples |
 | `make clean` | Clean up files |
 
-## 🔍 Available Tools
+## 🔧 Available Tools
 
 ### Git Server Tools
 

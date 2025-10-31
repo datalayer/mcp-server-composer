@@ -73,7 +73,7 @@ class MCPClient:
         Step 3: Make authenticated request to list tools
         """
         print("\n" + "=" * 70)
-        print("🛠️  STEP 3: Listing Available Tools")
+        print("🔧  STEP 3: Listing Available Tools")
         print("=" * 70)
         
         if not self.access_token:

@@ -295,12 +295,37 @@ async def run_server(config, args: argparse.Namespace) -> int:
         print()
         
         # Get the FastMCP app with SSE endpoint
-        app = composer.composed_server.sse_app()
+        base_app = composer.composed_server.sse_app()
+        
+        # Add a /tools endpoint to list all available tools
+        # sse_app() returns a Starlette app, so we need to use Starlette routing
+        from starlette.applications import Starlette
+        from starlette.responses import JSONResponse
+        from starlette.routing import Route
+        
+        async def list_tools(request):
+            """List all available tools with their schemas."""
+            tools = []
+            for tool_name, tool_def in composer.composed_tools.items():
+                tools.append({
+                    "name": tool_name,
+                    "description": tool_def.get("description", ""),
+                    "inputSchema": tool_def.get("inputSchema", {}),
+                })
+            return JSONResponse({
+                "tools": tools,
+                "total": len(tools)
+            })
+        
+        # Add the tools route to the existing app
+        base_app.routes.append(Route("/tools", list_tools))
+        app = base_app
         
         print("=" * 70)
         print("📡 MCP Server Endpoints")
         print("=" * 70)
         print(f"  SSE Endpoint:  http://localhost:{config.composer.port}/sse")
+        print(f"  Tools List:    http://localhost:{config.composer.port}/tools")
         print(f"  REST API:      http://localhost:{config.composer.port}/api/v1")
         print(f"  Health Check:  http://localhost:{config.composer.port}/api/v1/health")
         print()
@@ -310,7 +335,7 @@ async def run_server(config, args: argparse.Namespace) -> int:
         
         # List all available tools
         if composer.composed_tools:
-            print("🛠️  Available Tools:")
+            print("🔧 Available Tools:")
             for tool_name in sorted(composer.composed_tools.keys()):
                 tool_def = composer.composed_tools[tool_name]
                 # Extract parameter names from inputSchema

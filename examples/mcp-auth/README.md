@@ -143,7 +143,7 @@ mcp-auth/
 
 👉 **Detailed flow**: [docs/FLOW_EXPLAINED.md](docs/FLOW_EXPLAINED.md)
 
-## 🛠️ Available Tools
+## 🔧 Available Tools
 
 The server exposes these example MCP tools:
 - `calculator_add(a, b)` - Add two numbers

@@ -94,10 +94,6 @@ Be friendly and explain what you're doing."""
     )
     
     print("✅ Agent created successfully!")
-    print("\n📦 The agent has access to tools from:")
-    print("   • Calculator Server - Math operations")
-    print("   • Echo Server - String operations")
-    print("\n   Tool names are prefixed (e.g., calculator:add, echo:reverse)")
     
     return agent
 
@@ -118,6 +114,44 @@ def main():
         
         # Create agent with MCP server connection
         agent = create_agent()
+        
+        # List all available tools from the server
+        async def list_tools():
+            """List all tools available from the MCP server"""
+            import httpx
+            
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        "http://localhost:8080/tools",
+                        timeout=5.0
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        tools = data.get("tools", [])
+                        
+                        print("\n🔧 Available Tools:")
+                        
+                        for tool in tools:
+                            name = tool.get("name", "")
+                            params = []
+                            
+                            if "inputSchema" in tool and "properties" in tool["inputSchema"]:
+                                params = list(tool["inputSchema"]["properties"].keys())
+                            
+                            param_str = f"({', '.join(params)})" if params else "()"
+                            print(f"   • {name}{param_str}")
+                        
+                        print(f"\n   Total: {len(tools)} tools")
+                    else:
+                        print(f"\n⚠️  Could not list tools: HTTP {response.status_code}")
+                        print("   The agent will still work with available tools")
+            except Exception as e:
+                print(f"\n⚠️  Could not list tools: {e}")
+                print("   The agent will still work with available tools")
+        
+        asyncio.run(list_tools())
         
         # Launch interactive CLI
         print("\n" + "=" * 70)
