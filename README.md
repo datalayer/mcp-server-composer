@@ -340,7 +340,54 @@ docker run -d \
 
 See [Deployment Guide](docs/DEPLOYMENT.md) for Kubernetes and production setup.
 
-## � Project Status
+## 📚 Examples
+
+### Git + File MCP Servers
+
+A complete example demonstrating how to orchestrate Git and Filesystem MCP servers with anonymous access.
+
+**Location:** [`examples/git-file/`](examples/git-file/)
+
+**Features:**
+- Git operations (status, log, diff, commit)
+- Filesystem operations (read, write, list)
+- Unified API with tool prefixing
+- No authentication required
+- Full Makefile for easy management
+
+**Quick Start:**
+```bash
+cd examples/git-file
+make install
+make start
+make open-ui
+```
+
+See the [Git-File Example README](examples/git-file/README.md) for complete documentation.
+
+### OAuth Authentication Example
+
+Production-ready example with GitHub OAuth2 authentication.
+
+**Location:** [`examples/mcp-auth-example/`](examples/mcp-auth-example/)
+
+**Features:**
+- OAuth2 authentication flow
+- JWT tokens
+- Protected MCP server endpoints
+- Pydantic AI agent integration
+
+See the [MCP Auth Example README](examples/mcp-auth-example/README.md) for details.
+
+## 🗂️ Resources
+
+Configuration files and infrastructure resources are located in the [`resources/`](resources/) directory:
+
+- `nginx.conf` - Nginx reverse proxy configuration
+- `prometheus.yml` - Prometheus metrics collection
+- `grafana/` - Grafana dashboards and datasources
+
+## 📊 Project Status
 
 ### Phase 4: Complete ✅
 

@@ -1,19 +1,21 @@
 """
 MCP Server Composer CLI.
 
-Command-line interface for composing MCP servers from dependencies.
+Command-line interface for managing MCP servers.
 """
 
 import argparse
+import asyncio
 import json
 import logging
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from .composer import ConflictResolution, MCPServerComposer
+from .config_loader import load_config, find_config_file
 from .discovery import MCPServerDiscovery
 from .exceptions import MCPComposerError
+from .process_manager import ProcessManager
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -187,10 +189,108 @@ def save_composed_server(server, output_path: str) -> None:
     output_file.write_text(json.dumps(server_info, indent=2))
 
 
+def serve_command(args: argparse.Namespace) -> int:
+    """Handle the serve command."""
+    try:
+        # Find or use specified config file
+        if args.config:
+            config_path = Path(args.config)
+        else:
+            config_path = find_config_file()
+            if config_path is None:
+                print("Error: No configuration file found.", file=sys.stderr)
+                print("Create mcp_server_composer.toml in current directory or use --config", file=sys.stderr)
+                return 1
+        
+        print(f"Loading configuration from: {config_path}")
+        config = load_config(config_path)
+        
+        # Run the server
+        return asyncio.run(run_server(config, args))
+        
+    except MCPComposerError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Unexpected error: {e}", file=sys.stderr)
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
+        return 1
+
+
+async def run_server(config, args: argparse.Namespace) -> int:
+    """Run the MCP server composer."""
+    from .config import StdioProxiedServerConfig
+    
+    # Create process manager
+    process_manager = ProcessManager(auto_restart=True)
+    
+    try:
+        # Start process manager
+        await process_manager.start()
+        
+        print(f"\n🚀 MCP Server Composer: {config.composer.name}")
+        print(f"Conflict Resolution: {config.composer.conflict_resolution}")
+        print(f"Log Level: {config.composer.log_level}")
+        print()
+        
+        # Add and start all configured servers
+        if hasattr(config, 'servers') and hasattr(config.servers, 'proxied') and hasattr(config.servers.proxied, 'stdio'):
+            stdio_servers = config.servers.proxied.stdio
+            
+            if not stdio_servers:
+                print("⚠️  No servers configured in mcp_server_composer.toml")
+                print()
+                return 1
+            
+            print(f"Starting {len(stdio_servers)} server(s)...")
+            print()
+            
+            for server_config in stdio_servers:
+                if isinstance(server_config, StdioProxiedServerConfig):
+                    # Build command
+                    command = [server_config.command] + server_config.args
+                    
+                    print(f"  • {server_config.name}")
+                    print(f"    Command: {' '.join(command)}")
+                    if server_config.env:
+                        print(f"    Environment: {list(server_config.env.keys())}")
+                    
+                    # Add process
+                    await process_manager.add_process(
+                        name=server_config.name,
+                        command=command,
+                        env=server_config.env,
+                        auto_start=True
+                    )
+                    print(f"    Status: ✓ Started")
+                    print()
+        
+        print("✓ All servers started successfully!")
+        print()
+        print("Press Ctrl+C to stop all servers...")
+        print()
+        
+        # Keep running until interrupted
+        try:
+            while True:
+                await asyncio.sleep(1)
+        except KeyboardInterrupt:
+            print("\n\n⏹  Shutting down...")
+        
+        return 0
+        
+    finally:
+        # Clean shutdown
+        await process_manager.stop()
+        print("✓ All servers stopped")
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the CLI argument parser."""
     parser = argparse.ArgumentParser(
-        prog="mcp-compose",
+        prog="mcp-server-composer",
         description="Compose multiple MCP servers into a unified server",
     )
     
@@ -201,6 +301,29 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Serve command - NEW: Run MCP servers from config
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="Start MCP servers from configuration file",
+    )
+    serve_parser.add_argument(
+        "-c", "--config",
+        type=str,
+        help="Path to mcp_server_composer.toml file (default: auto-detect)",
+    )
+    serve_parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Host to bind to (default: 0.0.0.0)",
+    )
+    serve_parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind to (default: 8000)",
+    )
 
     # Compose command
     compose_parser = subparsers.add_parser(
@@ -280,7 +403,9 @@ def main() -> int:
     setup_logging(args.verbose)
 
     # Handle commands
-    if args.command == "compose":
+    if args.command == "serve":
+        return serve_command(args)
+    elif args.command == "compose":
         return compose_command(args)
     elif args.command == "discover":
         return discover_command(args)

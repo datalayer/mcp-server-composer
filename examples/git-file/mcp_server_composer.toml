@@ -1,0 +1,55 @@
+# MCP Server Composer Configuration
+# Git and File MCP Servers Example
+
+[composer]
+name = "git-file-composer"
+conflict_resolution = "prefix"  # Prefix tool names with server name
+log_level = "INFO"
+
+# ============================================================================
+# Git MCP Server (Proxied via STDIO)
+# ============================================================================
+[[servers]]
+name = "git"
+command = "uvx"
+args = ["mcp-server-git", "--repository", "."]
+transport = "stdio"
+auto_start = true
+
+[servers.env]
+# Optional environment variables for git server
+# GIT_AUTHOR_NAME = "MCP Bot"
+# GIT_AUTHOR_EMAIL = "bot@example.com"
+
+# ============================================================================
+# File System MCP Server (Proxied via STDIO)
+# ============================================================================
+[[servers]]
+name = "filesystem"
+command = "uvx"
+args = ["mcp-server-filesystem", "/tmp"]
+transport = "stdio"
+auto_start = true
+
+[servers.env]
+# Optional environment variables for filesystem server
+# ALLOWED_OPERATIONS = "read,write,list"
+
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+[logging]
+level = "INFO"
+format = "text"  # text or json
+
+# ============================================================================
+# Authentication (Disabled for this example)
+# ============================================================================
+[authentication]
+enabled = false
+
+# ============================================================================
+# Authorization (Disabled for this example)
+# ============================================================================
+[authorization]
+enabled = false

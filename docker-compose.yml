@@ -47,7 +47,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./resources/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -75,8 +75,8 @@ services:
       - GF_INSTALL_PLUGINS=
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./resources/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./resources/grafana/datasources:/etc/grafana/provisioning/datasources:ro
     restart: unless-stopped
     networks:
       - mcp-network
@@ -91,7 +91,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./resources/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/nginx/ssl:ro
     restart: unless-stopped
     networks:

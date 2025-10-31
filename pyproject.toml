@@ -56,7 +56,7 @@ Repository = "https://github.com/datalayer/mcp-server-composer"
 Issues = "https://github.com/datalayer/mcp-server-composer/issues"
 
 [project.scripts]
-mcp-compose = "mcp_server_composer.cli:main"
+mcp-server-composer = "mcp_server_composer.cli:main"
 
 [tool.hatch.version]
 path = "mcp_server_composer/__version__.py"
