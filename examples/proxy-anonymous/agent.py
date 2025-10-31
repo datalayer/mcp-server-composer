@@ -115,38 +115,40 @@ def main():
         # Create agent with MCP server connection
         agent = create_agent()
         
-        # List all available tools from the server
+        # List all available tools from the server using MCP SDK
         async def list_tools():
             """List all tools available from the MCP server"""
-            import httpx
-            
             try:
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(
-                        "http://localhost:8080/tools",
-                        timeout=5.0
-                    )
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        tools = data.get("tools", [])
+                # Import MCP SDK client
+                from mcp import ClientSession
+                from mcp.client.sse import sse_client
+                
+                # Connect using SSE client
+                async with sse_client("http://localhost:8080/sse") as (read, write):
+                    async with ClientSession(read, write) as session:
+                        # Initialize the session
+                        await session.initialize()
+                        
+                        # List tools
+                        tools_result = await session.list_tools()
+                        tools = tools_result.tools
                         
                         print("\n🔧 Available Tools:")
                         
                         for tool in tools:
-                            name = tool.get("name", "")
+                            name = tool.name
                             params = []
                             
-                            if "inputSchema" in tool and "properties" in tool["inputSchema"]:
-                                params = list(tool["inputSchema"]["properties"].keys())
+                            if hasattr(tool, 'inputSchema') and tool.inputSchema:
+                                schema = tool.inputSchema
+                                if isinstance(schema, dict) and "properties" in schema:
+                                    params = list(schema["properties"].keys())
                             
                             param_str = f"({', '.join(params)})" if params else "()"
                             print(f"   • {name}{param_str}")
                         
                         print(f"\n   Total: {len(tools)} tools")
-                    else:
-                        print(f"\n⚠️  Could not list tools: HTTP {response.status_code}")
-                        print("   The agent will still work with available tools")
+                        
             except Exception as e:
                 print(f"\n⚠️  Could not list tools: {e}")
                 print("   The agent will still work with available tools")
