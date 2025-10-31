@@ -222,9 +222,27 @@ def serve_command(args: argparse.Namespace) -> int:
 async def run_server(config, args: argparse.Namespace) -> int:
     """Run the MCP server composer."""
     from .config import StdioProxiedServerConfig
+    from .composer import MCPServerComposer, ConflictResolution
+    from .tool_proxy import ToolProxy
+    import uvicorn
     
     # Create process manager
     process_manager = ProcessManager(auto_restart=False)
+    
+    # Create composer
+    conflict_strategy = ConflictResolution.PREFIX
+    if hasattr(config.composer, 'conflict_resolution'):
+        conflict_strategy = config.composer.conflict_resolution
+    
+    composer = MCPServerComposer(
+        composed_server_name=config.composer.name,
+        conflict_resolution=conflict_strategy,
+        use_process_manager=True,
+    )
+    composer.process_manager = process_manager
+    
+    # Create tool proxy for STDIO communication
+    tool_proxy = ToolProxy(process_manager, composer)
     
     try:
         # Start process manager
@@ -258,24 +276,51 @@ async def run_server(config, args: argparse.Namespace) -> int:
                         print(f"    Environment: {list(server_config.env.keys())}")
                     
                     # Add process
-                    await process_manager.add_process(
+                    process = await process_manager.add_process(
                         name=server_config.name,
                         command=command,
                         env=server_config.env,
                         auto_start=True
                     )
+                    
+                    # Discover tools from the server
+                    await tool_proxy.discover_tools(server_config.name, process)
+                    
                     print(f"    Status: ✓ Started")
                     print()
         
         print("✓ All servers started successfully!")
         print()
+        
+        # Get the FastMCP app with SSE endpoint
+        app = composer.composed_server.sse_app()
+        
+        print("=" * 70)
+        print("📡 MCP Server Endpoints")
+        print("=" * 70)
+        print(f"  SSE Endpoint:  http://localhost:{config.composer.port}/sse")
+        print(f"  REST API:      http://localhost:{config.composer.port}/api/v1")
+        print(f"  Health Check:  http://localhost:{config.composer.port}/api/v1/health")
+        print()
+        print(f"✓ Unified MCP server is now running!")
+        print(f"  Total tools: {len(composer.composed_tools)}")
+        print("=" * 70)
+        print()
         print("Press Ctrl+C to stop all servers...")
         print()
         
-        # Keep running until interrupted
+        # Run uvicorn in background
+        server_config_uvicorn = uvicorn.Config(
+            app=app,
+            host=args.host,
+            port=config.composer.port,
+            log_level="info",
+        )
+        server = uvicorn.Server(server_config_uvicorn)
+        
+        # Run server
         try:
-            while True:
-                await asyncio.sleep(1)
+            await server.serve()
         except KeyboardInterrupt:
             print("\n\n⏹  Shutting down...")
         

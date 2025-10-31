@@ -87,6 +87,8 @@ The tools are provided by two MCP servers managed by the composer:
 
 Tool names are prefixed with their server name to avoid conflicts.
 
+When the user first connects, greet them and list all the available tools you have access to with a brief description of each.
+
 When users ask you to perform calculations or string operations, use the appropriate tools.
 Be friendly and explain what you're doing."""
     )
@@ -150,11 +152,30 @@ def main():
         print("\n❌ Encountered errors while running the CLI:")
         for idx, sub_exc in enumerate(exc.exceptions, start=1):
             print(f"  [{idx}] {type(sub_exc).__name__}: {sub_exc}")
+        
+        print("\n" + "=" * 70)
+        print("⚠️  CONNECTION ISSUE")
+        print("=" * 70)
+        print("\nThe agent cannot connect because the SSE endpoint is not yet")
+        print("implemented in the serve command.")
+        print("\nCurrent Status:")
+        print("  ✅ Child servers (mcp1.py, mcp2.py) start successfully")
+        print("  ❌ No SSE endpoint exposed at http://localhost:8080/sse")
+        print("\nWhat's Needed:")
+        print("  The serve command needs to be enhanced to:")
+        print("  1. Create a unified FastMCP server")
+        print("  2. Expose SSE transport at /sse endpoint")
+        print("  3. Proxy requests between SSE clients and STDIO child servers")
+        print("\nThis is documented in IMPLEMENTATION_STATUS.md")
+        print("=" * 70)
         raise
     except ConnectionError as e:
         print(f"\n❌ Connection Error: {e}")
         print("   Make sure the MCP Server Composer is running on port 8080")
         print("   (Run: make start in another terminal)")
+        print("\n⚠️  NOTE: The unified SSE endpoint is not yet implemented!")
+        print("   The serve command currently only starts child processes.")
+        print("   The SSE endpoint at http://localhost:8080/sse will be added soon.")
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
