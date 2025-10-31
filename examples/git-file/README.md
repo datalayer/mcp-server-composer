@@ -1,15 +1,15 @@
 # Git + File MCP Server Example
 
-This example demonstrates how to run Git and Filesystem MCP servers individually or use them together.
+This example demonstrates how to use MCP Server Composer to orchestrate multiple MCP servers from a configuration file.
 
 ## 🎯 Overview
 
-This example shows two MCP servers:
+This configuration launches two MCP servers managed by the composer:
 
 1. **Git MCP Server** - Git operations (status, log, diff, commit, etc.)
 2. **Filesystem MCP Server** - File system operations (read, write, list, etc.)
 
-**Note:** The full MCP Server Composer with web UI and unified orchestration is under development. This example shows how to work with individual MCP servers using the official MCP SDK.
+Both servers run in **proxy mode** via STDIO transport and are managed by the MCP Server Composer.
 
 ## 📋 Features
 
@@ -20,56 +20,42 @@ This example shows two MCP servers:
 - **Web UI**: Manage and monitor servers through browser interface
 - **REST API**: Full programmatic control via HTTP endpoints
 
-## 🚀 Quick Start
+## � Features
 
-### 1. Install MCP Servers
+- **Multiple Servers**: Git and Filesystem servers orchestrated together
+- **Configuration-Based**: Define servers in `mcp_server_composer.toml`
+- **Process Management**: Composer manages server lifecycles
+- **STDIO Transport**: Standard input/output for MCP communication
+- **Easy Management**: Simple make commands to control everything
+
+## �🚀 Quick Start
+
+### 1. Install Dependencies
 
 ```bash
 make install
 ```
 
 This will install:
+- `mcp-server-composer` (the orchestrator)
 - `mcp-server-git` (Git operations)
 - `mcp-server-filesystem` (File operations)
 
-### 2. Run Git MCP Server
-
-In one terminal:
+### 2. Start the Composer
 
 ```bash
-make start-git
+make start
 ```
 
-### 3. Run Filesystem MCP Server
+The composer will:
+- Read configuration from `mcp_server_composer.toml`
+- Start both Git and Filesystem MCP servers
+- Manage their processes
+- Handle auto-restart if servers crash
 
-In another terminal:
+### 3. Stop the Composer
 
-```bash
-make start-fs
-```
-
-### 4. Connect a Client
-
-You can connect MCP clients (like Claude Desktop, Continue, or custom applications) to these servers using STDIO transport.
-
-Example with Python MCP client:
-
-```python
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-
-# Connect to git server
-server_params = StdioServerParameters(
-    command="uvx",
-    args=["mcp-server-git", "--repository", "."]
-)
-
-async with stdio_client(server_params) as (read, write):
-    async with ClientSession(read, write) as session:
-        await session.initialize()
-        tools = await session.list_tools()
-        print(f"Available tools: {[t.name for t in tools]}")
-```
+Press `Ctrl+C` in the terminal where the composer is running.
 
 ## 📖 Usage Examples
 

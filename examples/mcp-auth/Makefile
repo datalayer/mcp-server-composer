@@ -21,13 +21,13 @@ help:
 
 # Install package in editable mode
 install:
-	@echo "📦 Installing mcp-auth-example..."
+	@echo "📦 Installing mcp-auth..."
 	pip install -e .
 	@echo "✅ Package installed"
 
 # Install with dev dependencies
 dev-install:
-	@echo "📦 Installing mcp-auth-example with dev dependencies..."
+	@echo "📦 Installing mcp-auth with dev dependencies..."
 	pip install -e ".[dev]"
 	@echo "✅ Package installed with dev dependencies"
 

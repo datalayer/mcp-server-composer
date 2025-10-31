@@ -249,8 +249,8 @@ async def run_server(config, args: argparse.Namespace) -> int:
             
             for server_config in stdio_servers:
                 if isinstance(server_config, StdioProxiedServerConfig):
-                    # Build command
-                    command = [server_config.command] + server_config.args
+                    # command is already a List[str] in the config
+                    command = server_config.command
                     
                     print(f"  • {server_config.name}")
                     print(f"    Command: {' '.join(command)}")

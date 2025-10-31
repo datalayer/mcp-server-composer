@@ -9,47 +9,17 @@ log_level = "INFO"
 # ============================================================================
 # Git MCP Server (Proxied via STDIO)
 # ============================================================================
-[[servers]]
+[[servers.proxied.stdio]]
 name = "git"
-command = "uvx"
-args = ["mcp-server-git", "--repository", "."]
-transport = "stdio"
-auto_start = true
-
-[servers.env]
+command = ["uvx", "mcp-server-git", "--repository", "."]
 # Optional environment variables for git server
-# GIT_AUTHOR_NAME = "MCP Bot"
-# GIT_AUTHOR_EMAIL = "bot@example.com"
+# env = { GIT_AUTHOR_NAME = "MCP Bot", GIT_AUTHOR_EMAIL = "bot@example.com" }
 
 # ============================================================================
 # File System MCP Server (Proxied via STDIO)
 # ============================================================================
-[[servers]]
+[[servers.proxied.stdio]]
 name = "filesystem"
-command = "uvx"
-args = ["mcp-server-filesystem", "/tmp"]
-transport = "stdio"
-auto_start = true
-
-[servers.env]
+command = ["uvx", "mcp-server-filesystem", "/tmp"]
 # Optional environment variables for filesystem server
-# ALLOWED_OPERATIONS = "read,write,list"
-
-# ============================================================================
-# Logging Configuration
-# ============================================================================
-[logging]
-level = "INFO"
-format = "text"  # text or json
-
-# ============================================================================
-# Authentication (Disabled for this example)
-# ============================================================================
-[authentication]
-enabled = false
-
-# ============================================================================
-# Authorization (Disabled for this example)
-# ============================================================================
-[authorization]
-enabled = false
+# env = { ALLOWED_OPERATIONS = "read,write,list" }

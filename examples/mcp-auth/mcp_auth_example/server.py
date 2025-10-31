@@ -318,7 +318,7 @@ async def protected_resource_metadata(request: Request):
         "resource": config.server_url,
         "authorization_servers": [config.server_url],
         "bearer_methods_supported": ["header"],
-        "resource_documentation": "https://github.com/datalayer/mcp-server-composer/tree/main/examples/mcp-auth-example"
+        "resource_documentation": "https://github.com/datalayer/mcp-server-composer/tree/main/examples/mcp-auth"
     })
 
 
@@ -415,7 +415,7 @@ async def root(request: Request):
             "protected_resource": f"{config.server_url}/.well-known/oauth-protected-resource",
             "authorization_server": f"{config.server_url}/.well-known/oauth-authorization-server"
         },
-        "documentation": "https://github.com/datalayer/mcp-server-composer/tree/main/examples/mcp-auth-example"
+        "documentation": "https://github.com/datalayer/mcp-server-composer/tree/main/examples/mcp-auth"
     })
 
 

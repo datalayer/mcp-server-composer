@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mcp-auth-example"
+name = "mcp-auth"
 version = "0.1.0"
 description = "Example of using Pydantic AI Agent with authenticated MCP server"
 readme = "README.md"
@@ -45,12 +45,12 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/datalayer/mcp-server-composer"
-Documentation = "https://github.com/datalayer/mcp-server-composer/tree/main/examples/mcp-auth-example"
+Documentation = "https://github.com/datalayer/mcp-server-composer/tree/main/examples/mcp-auth"
 Repository = "https://github.com/datalayer/mcp-server-composer"
 Issues = "https://github.com/datalayer/mcp-server-composer/issues"
 
 [project.scripts]
-mcp-auth-example = "mcp_auth_example.__main__:main"
+mcp-auth = "mcp_auth_example.__main__:main"
 mcp-auth-agent = "mcp_auth_example.agent:main"
 mcp-auth-client = "mcp_auth_example.client:main"
 mcp-auth-server = "mcp_auth_example.server:main"

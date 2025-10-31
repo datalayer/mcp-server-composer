@@ -36,7 +36,7 @@ make install
 ## 📁 Project Structure
 
 ```
-mcp-auth-example/
+mcp-auth/
 ├── mcp_auth_example/      # Python package
 │   ├── server.py         # MCP server with OAuth2 (FastMCP + FastAPI)
 │   ├── client.py         # MCP client with OAuth2 flow
