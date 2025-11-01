@@ -440,4 +440,4 @@ BSD 3-Clause License - see [LICENSE](../../LICENSE)
 
 ---
 
-**Made with ❤️ by [Datalayer](https://datalayer.io)**
+**Made with ❤️ by [Datalayer](https://datalayer.ai)**

@@ -462,7 +462,7 @@ We use [Semantic Versioning](https://semver.org/):
 
 - 💬 [GitHub Discussions](https://github.com/datalayer/mcp-server-composer/discussions)
 - 🐛 [Issue Tracker](https://github.com/datalayer/mcp-server-composer/issues)
-- 📧 Email: support@datalayer.io
+- 📧 Email: support@datalayer.ai
 
 ### Reporting Bugs
 
@@ -493,4 +493,4 @@ Thank you for contributing to MCP Server Composer! 🎉
 
 ---
 
-*For more information, see our [documentation](docs/) or visit [datalayer.io](https://datalayer.io)*
+*For more information, see our [documentation](docs/) or visit [datalayer.ai](https://datalayer.ai)*
