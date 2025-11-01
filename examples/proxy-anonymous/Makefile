@@ -58,7 +58,19 @@ agent:
 	@echo "⚠️  Make sure the MCP Server Composer is running!"
 	@echo "   (Run 'make start' in another terminal)"
 	@echo ""
-	python agent.py
+	@echo "Usage: python agent.py [model]"
+	@echo "  Default: anthropic:claude-sonnet-4-0"
+	@echo "  Examples:"
+	@echo "    python agent.py openai:gpt-4o"
+	@echo "    python agent.py anthropic:claude-sonnet-4-0"
+	@echo "    python agent.py azure-openai:gpt-4o-mini"
+	@echo ""
+	@echo "Note: For Azure OpenAI, set these environment variables:"
+	@echo "  - AZURE_OPENAI_API_KEY"
+	@echo "  - AZURE_OPENAI_ENDPOINT (base URL, e.g., https://your-resource.openai.azure.com)"
+	@echo "  - AZURE_OPENAI_API_VERSION (optional)"
+	@echo ""
+	python agent.py azure-openai:gpt-4o-mini
 
 # Stop the composer (use Ctrl+C in the terminal where it's running)
 stop:

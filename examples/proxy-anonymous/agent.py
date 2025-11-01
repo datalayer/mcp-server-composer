@@ -45,15 +45,23 @@ except ImportError:
     sys.exit(1)
 
 
-def create_agent(server_url: str = "http://localhost:8080") -> Agent:
+def create_agent(model: str = "anthropic:claude-sonnet-4-0", server_url: str = "http://localhost:8080") -> Agent:
     """
     Create a pydantic-ai Agent connected to the MCP Server Composer
     
     Args:
+        model: Model string in format 'provider:model-name' (e.g., 'anthropic:claude-sonnet-4-0', 'openai:gpt-4o')
+               For Azure OpenAI, use 'azure-openai:deployment-name'
         server_url: MCP Server Composer base URL
     
     Returns:
         Configured pydantic-ai Agent
+    
+    Note:
+        For Azure OpenAI, requires these environment variables:
+        - AZURE_OPENAI_API_KEY
+        - AZURE_OPENAI_ENDPOINT (base URL only, e.g., https://your-resource.openai.azure.com)
+        - AZURE_OPENAI_API_VERSION (optional, defaults to latest)
     """
     print("\n" + "=" * 70)
     print("🤖 Pydantic AI Agent with MCP Server Composer")
@@ -72,12 +80,20 @@ def create_agent(server_url: str = "http://localhost:8080") -> Agent:
         max_retries=2
     )
     
-    print("\n🤖 Initializing Agent with Anthropic Claude Sonnet 4.5")
+    print(f"\n🤖 Initializing Agent with {model}")
     
-    # Create Agent with Anthropic Claude Sonnet 4.5
+    # Handle Azure OpenAI specially - needs OpenAIChatModel with provider='azure'
+    model_obj = model
+    if model.startswith('azure-openai:'):
+        from pydantic_ai.models.openai import OpenAIChatModel
+        deployment_name = model.split(':', 1)[1]
+        model_obj = OpenAIChatModel(deployment_name, provider='azure')
+        print(f"   Using Azure OpenAI deployment: {deployment_name}")
+    
+    # Create Agent with the specified model
     # The agent will have access to all tools from both servers
     agent = Agent(
-        model='anthropic:claude-sonnet-4-0',
+        model=model_obj,
         toolsets=[mcp_server],
         system_prompt="""You are a helpful AI assistant with access to Calculator and Echo MCP server tools.
 
@@ -104,16 +120,22 @@ def main():
     if sys.stdout.encoding != 'utf-8':
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     
+    # Parse command-line arguments
+    model = "anthropic:claude-sonnet-4-0"  # Default model
+    if len(sys.argv) > 1:
+        model = sys.argv[1]
+    
     try:
         print("\n" + "=" * 70)
         print("🚀 MCP Server Composer Agent")
         print("=" * 70)
+        print(f"\nUsing model: {model}")
         print("\n⚠️  IMPORTANT: Make sure the MCP Server Composer is running!")
         print("   Run in another terminal: make start")
         print("\nConnecting to server at http://localhost:8080...")
         
         # Create agent with MCP server connection
-        agent = create_agent()
+        agent = create_agent(model=model)
         
         # List all available tools from the server using MCP SDK
         async def list_tools():
